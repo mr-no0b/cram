@@ -1,0 +1,3115 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>Cram — Flashcard App</title>
+  <meta name="description" content="Offline flashcard app with spaced repetition. Import CSV, study with Cram Mode, and memorize anything.">
+  <meta name="theme-color" content="#1a3a6b">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Crect width='100' height='100' rx='20' fill='%231a3a6b'/%3E%3Ctext x='50' y='68' font-size='55' font-weight='bold' text-anchor='middle' fill='%237ccf00'%3EC%3C/text%3E%3C/svg%3E">
+  <style>
+/* ============================================
+   CRAM FLASHCARD PWA — Design System & Styles
+   ============================================ */
+
+/* ── CSS Variables ── */
+:root {
+  --primary-dark: #0a1628;
+  --primary: #112d56;
+  --primary-mid: #1a4a7a;
+  --primary-light: #2567a8;
+  --accent: #7ccf00;
+  --accent-light: #9de516;
+  --accent-dark: #5a9900;
+  --accent-glow: rgba(124, 207, 0, 0.3);
+  --card-white: #ffffff;
+  --card-off: #f8f9fa;
+  --text-white: #ffffff;
+  --text-dark: #1a1a2e;
+  --text-muted: rgba(255, 255, 255, 0.55);
+  --text-muted-dark: #6c757d;
+  --danger: #ff4757;
+  --danger-glow: rgba(255, 71, 87, 0.3);
+  --success: #2ed573;
+  --success-glow: rgba(46, 213, 115, 0.3);
+  --glass: rgba(255, 255, 255, 0.07);
+  --glass-border: rgba(255, 255, 255, 0.12);
+  --glass-hover: rgba(255, 255, 255, 0.12);
+  --radius: 12px;
+  --radius-lg: 20px;
+  --radius-xl: 28px;
+  --transition: 300ms cubic-bezier(0.4, 0, 0.2, 1);
+  --transition-fast: 150ms cubic-bezier(0.4, 0, 0.2, 1);
+  --shadow: 0 8px 32px rgba(0, 0, 0, 0.25);
+  --shadow-lg: 0 16px 48px rgba(0, 0, 0, 0.35);
+  --font: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Noto Sans Bengali', 'Helvetica Neue', Arial, sans-serif;
+  --safe-top: env(safe-area-inset-top, 0px);
+  --safe-bottom: env(safe-area-inset-bottom, 0px);
+}
+
+/* ── Reset & Base ── */
+*,
+*::before,
+*::after {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+html {
+  font-size: 16px;
+  -webkit-tap-highlight-color: transparent;
+  -webkit-text-size-adjust: 100%;
+}
+
+body {
+  font-family: var(--font);
+  background: linear-gradient(160deg, var(--primary-dark) 0%, var(--primary) 40%, var(--primary-mid) 100%);
+  color: var(--text-white);
+  min-height: 100vh;
+  min-height: 100dvh;
+  overflow-x: hidden;
+  line-height: 1.5;
+  padding-top: var(--safe-top);
+  padding-bottom: var(--safe-bottom);
+}
+
+body::before {
+  content: '';
+  position: fixed;
+  top: -50%;
+  left: -50%;
+  width: 200%;
+  height: 200%;
+  background: radial-gradient(ellipse at 30% 20%, rgba(37, 103, 168, 0.15) 0%, transparent 60%),
+              radial-gradient(ellipse at 70% 80%, rgba(124, 207, 0, 0.05) 0%, transparent 50%);
+  pointer-events: none;
+  z-index: 0;
+}
+
+/* ── Scrollbar ── */
+::-webkit-scrollbar {
+  width: 4px;
+}
+
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+::-webkit-scrollbar-thumb {
+  background: var(--glass-border);
+  border-radius: 4px;
+}
+
+/* ── Typography ── */
+h1 {
+  font-size: 1.75rem;
+  font-weight: 700;
+  letter-spacing: -0.02em;
+}
+
+h2 {
+  font-size: 1.25rem;
+  font-weight: 600;
+  letter-spacing: -0.01em;
+}
+
+h3 {
+  font-size: 1rem;
+  font-weight: 600;
+}
+
+/* ── App Container ── */
+#app {
+  position: relative;
+  z-index: 1;
+  min-height: 100vh;
+  min-height: 100dvh;
+  display: flex;
+  flex-direction: column;
+}
+
+/* ============================================
+   VIEWS — Screen Management
+   ============================================ */
+.view {
+  display: none;
+  flex-direction: column;
+  min-height: 100vh;
+  min-height: 100dvh;
+  animation: viewFadeIn 300ms ease forwards;
+}
+
+.view.active {
+  display: flex;
+}
+
+@keyframes viewFadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(12px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* ============================================
+   HEADER
+   ============================================ */
+.header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 16px 20px;
+  position: sticky;
+  top: 0;
+  z-index: 100;
+  background: linear-gradient(180deg, var(--primary-dark) 0%, rgba(10, 22, 40, 0.95) 100%);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  border-bottom: 1px solid var(--glass-border);
+}
+
+.header-title {
+  font-size: 1.35rem;
+  font-weight: 700;
+  letter-spacing: -0.02em;
+}
+
+.header-left,
+.header-right {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+/* ── Icon Buttons ── */
+.icon-btn {
+  width: 40px;
+  height: 40px;
+  border: none;
+  background: var(--glass);
+  border-radius: 50%;
+  color: var(--text-white);
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: var(--transition-fast);
+  font-size: 1.2rem;
+}
+
+.icon-btn:hover {
+  background: var(--glass-hover);
+  transform: scale(1.05);
+}
+
+.icon-btn:active {
+  transform: scale(0.95);
+}
+
+.icon-btn.active {
+  background: var(--accent);
+  color: var(--text-dark);
+  box-shadow: 0 0 12px var(--accent-glow);
+}
+
+.icon-btn svg {
+  width: 20px;
+  height: 20px;
+  fill: currentColor;
+}
+
+/* ============================================
+   HOME VIEW
+   ============================================ */
+
+/* ── Create Flashcards Banner ── */
+.create-banner {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 20px 20px;
+  margin: 12px 16px;
+  background: var(--glass);
+  border: 1px solid var(--glass-border);
+  border-radius: var(--radius-lg);
+  cursor: pointer;
+  transition: var(--transition);
+}
+
+.create-banner:hover {
+  background: var(--glass-hover);
+  transform: translateY(-2px);
+  box-shadow: var(--shadow);
+}
+
+.create-banner:active {
+  transform: translateY(0);
+}
+
+.create-banner h2 {
+  font-size: 1.3rem;
+}
+
+.create-btn {
+  width: 48px;
+  height: 48px;
+  border-radius: 50%;
+  border: none;
+  background: var(--accent);
+  color: var(--text-dark);
+  font-size: 1.8rem;
+  font-weight: 300;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: var(--transition);
+  box-shadow: 0 4px 16px var(--accent-glow);
+}
+
+.create-btn:hover {
+  background: var(--accent-light);
+  transform: scale(1.1);
+  box-shadow: 0 6px 24px var(--accent-glow);
+}
+
+.create-btn:active {
+  transform: scale(0.95);
+}
+
+/* ── My Flashcards Section ── */
+.section-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 16px 20px 8px;
+}
+
+.section-header h2 {
+  font-size: 1.15rem;
+  font-weight: 600;
+}
+
+.badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  background: var(--accent);
+  color: var(--text-dark);
+  padding: 4px 12px;
+  border-radius: 20px;
+  font-size: 0.85rem;
+  font-weight: 700;
+}
+
+.badge .badge-num {
+  font-size: 1.2rem;
+  line-height: 1;
+}
+
+/* ── Card Set List ── */
+.set-list {
+  padding: 4px 16px 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  flex: 1;
+}
+
+.set-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 16px 20px;
+  background: linear-gradient(135deg, rgba(26, 74, 122, 0.6) 0%, rgba(17, 45, 86, 0.6) 100%);
+  border: 1px solid var(--glass-border);
+  border-radius: var(--radius);
+  cursor: pointer;
+  transition: var(--transition);
+  position: relative;
+  overflow: hidden;
+}
+
+.set-item::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.03));
+  opacity: 0;
+  transition: var(--transition);
+}
+
+.set-item:hover::before {
+  opacity: 1;
+}
+
+.set-item:hover {
+  transform: translateX(4px);
+  border-color: rgba(255, 255, 255, 0.2);
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.2);
+}
+
+.set-item:active {
+  transform: translateX(2px) scale(0.99);
+}
+
+.set-item-info {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  flex: 1;
+  min-width: 0;
+}
+
+.set-item-name {
+  font-size: 1.05rem;
+  font-weight: 600;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.set-item-meta {
+  font-size: 0.78rem;
+  color: var(--text-muted);
+}
+
+.set-item-chevron {
+  font-size: 1.2rem;
+  color: var(--accent);
+  margin-left: 12px;
+  transition: var(--transition-fast);
+}
+
+.set-item:hover .set-item-chevron {
+  transform: translateX(4px);
+}
+
+/* ── Empty State ── */
+.empty-state {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 60px 20px;
+  text-align: center;
+  gap: 16px;
+}
+
+.empty-state-icon {
+  font-size: 4rem;
+  opacity: 0.3;
+}
+
+.empty-state-text {
+  color: var(--text-muted);
+  font-size: 1rem;
+  max-width: 280px;
+  line-height: 1.6;
+}
+
+/* ── Search Bar ── */
+.search-bar {
+  padding: 0 16px 8px;
+  display: none;
+}
+
+.search-bar.open {
+  display: block;
+  animation: slideDown 200ms ease;
+}
+
+@keyframes slideDown {
+  from {
+    opacity: 0;
+    transform: translateY(-8px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.search-input {
+  width: 100%;
+  padding: 12px 16px 12px 44px;
+  background: var(--glass);
+  border: 1px solid var(--glass-border);
+  border-radius: var(--radius);
+  color: var(--text-white);
+  font-size: 0.95rem;
+  font-family: var(--font);
+  outline: none;
+  transition: var(--transition);
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='18' height='18' viewBox='0 0 24 24' fill='none' stroke='rgba(255,255,255,0.4)' stroke-width='2'%3E%3Ccircle cx='11' cy='11' r='8'/%3E%3Cline x1='21' y1='21' x2='16.65' y2='16.65'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: 14px center;
+}
+
+.search-input::placeholder {
+  color: var(--text-muted);
+}
+
+.search-input:focus {
+  border-color: var(--accent);
+  background-color: rgba(255, 255, 255, 0.1);
+  box-shadow: 0 0 0 3px var(--accent-glow);
+}
+
+/* ============================================
+   CREATE / EDIT SET VIEW
+   ============================================ */
+.form-section {
+  padding: 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+  flex: 1;
+}
+
+.form-group {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.form-label {
+  font-size: 0.85rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--text-muted);
+}
+
+.form-input {
+  padding: 14px 16px;
+  background: var(--glass);
+  border: 1px solid var(--glass-border);
+  border-radius: var(--radius);
+  color: var(--text-white);
+  font-size: 1rem;
+  font-family: var(--font);
+  outline: none;
+  transition: var(--transition);
+}
+
+.form-input:focus {
+  border-color: var(--accent);
+  box-shadow: 0 0 0 3px var(--accent-glow);
+}
+
+.form-input::placeholder {
+  color: var(--text-muted);
+}
+
+/* ── CSV Upload Area ── */
+.csv-upload {
+  border: 2px dashed var(--glass-border);
+  border-radius: var(--radius-lg);
+  padding: 32px 20px;
+  text-align: center;
+  cursor: pointer;
+  transition: var(--transition);
+  position: relative;
+  overflow: hidden;
+}
+
+.csv-upload:hover {
+  border-color: var(--accent);
+  background: rgba(124, 207, 0, 0.05);
+}
+
+.csv-upload.dragover {
+  border-color: var(--accent);
+  background: rgba(124, 207, 0, 0.1);
+  transform: scale(1.01);
+}
+
+.csv-upload-icon {
+  font-size: 2.5rem;
+  margin-bottom: 8px;
+}
+
+.csv-upload-text {
+  font-size: 0.95rem;
+  color: var(--text-muted);
+  margin-bottom: 4px;
+}
+
+.csv-upload-hint {
+  font-size: 0.78rem;
+  color: rgba(255, 255, 255, 0.35);
+}
+
+.csv-upload input[type="file"] {
+  position: absolute;
+  inset: 0;
+  opacity: 0;
+  cursor: pointer;
+}
+
+/* ── Manual Card Entry ── */
+.card-entry {
+  display: flex;
+  gap: 8px;
+  align-items: flex-end;
+}
+
+.card-entry .form-group {
+  flex: 1;
+}
+
+.card-entry-inputs {
+  display: flex;
+  gap: 8px;
+  flex: 1;
+}
+
+.add-card-btn {
+  width: 48px;
+  height: 48px;
+  border: none;
+  border-radius: var(--radius);
+  background: var(--accent);
+  color: var(--text-dark);
+  font-size: 1.5rem;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: var(--transition-fast);
+  flex-shrink: 0;
+}
+
+.add-card-btn:hover {
+  background: var(--accent-light);
+  transform: scale(1.05);
+}
+
+.add-card-btn:active {
+  transform: scale(0.95);
+}
+
+/* ── Card Preview List (in create/edit) ── */
+.card-preview-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  max-height: 40vh;
+  overflow-y: auto;
+  padding: 4px 0;
+}
+
+.card-preview-item {
+  display: flex;
+  align-items: center;
+  padding: 12px 16px;
+  background: var(--glass);
+  border: 1px solid var(--glass-border);
+  border-radius: var(--radius);
+  gap: 12px;
+  animation: cardSlideIn 200ms ease;
+}
+
+@keyframes cardSlideIn {
+  from {
+    opacity: 0;
+    transform: translateX(-12px);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
+
+.card-preview-front,
+.card-preview-back {
+  flex: 1;
+  font-size: 0.9rem;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.card-preview-divider {
+  color: var(--accent);
+  font-weight: 700;
+  font-size: 0.85rem;
+}
+
+.card-preview-delete {
+  width: 28px;
+  height: 28px;
+  border: none;
+  background: transparent;
+  color: var(--danger);
+  cursor: pointer;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1.1rem;
+  transition: var(--transition-fast);
+  flex-shrink: 0;
+}
+
+.card-preview-delete:hover {
+  background: var(--danger-glow);
+}
+
+/* ── Save Button ── */
+.btn-primary {
+  padding: 16px 32px;
+  background: linear-gradient(135deg, var(--accent) 0%, var(--accent-light) 100%);
+  color: var(--text-dark);
+  border: none;
+  border-radius: var(--radius);
+  font-size: 1.05rem;
+  font-weight: 700;
+  font-family: var(--font);
+  cursor: pointer;
+  transition: var(--transition);
+  box-shadow: 0 4px 16px var(--accent-glow);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.btn-primary:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 8px 24px var(--accent-glow);
+}
+
+.btn-primary:active {
+  transform: translateY(0);
+}
+
+.btn-primary:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+  transform: none;
+}
+
+.btn-secondary {
+  padding: 12px 24px;
+  background: var(--glass);
+  color: var(--text-white);
+  border: 1px solid var(--glass-border);
+  border-radius: var(--radius);
+  font-size: 0.95rem;
+  font-weight: 600;
+  font-family: var(--font);
+  cursor: pointer;
+  transition: var(--transition);
+}
+
+.btn-secondary:hover {
+  background: var(--glass-hover);
+  border-color: rgba(255, 255, 255, 0.25);
+}
+
+.btn-danger {
+  padding: 12px 24px;
+  background: rgba(255, 71, 87, 0.15);
+  color: var(--danger);
+  border: 1px solid rgba(255, 71, 87, 0.3);
+  border-radius: var(--radius);
+  font-size: 0.95rem;
+  font-weight: 600;
+  font-family: var(--font);
+  cursor: pointer;
+  transition: var(--transition);
+}
+
+.btn-danger:hover {
+  background: rgba(255, 71, 87, 0.25);
+}
+
+/* ============================================
+   CARD SET VIEW
+   ============================================ */
+
+/* ── Mode Selector ── */
+.mode-selector {
+  padding: 12px 16px;
+  display: flex;
+  gap: 0;
+  background: var(--glass);
+  margin: 0 16px;
+  border-radius: var(--radius);
+  border: 1px solid var(--glass-border);
+  overflow: hidden;
+}
+
+.mode-btn {
+  flex: 1;
+  padding: 12px 8px;
+  border: none;
+  background: transparent;
+  color: var(--text-muted);
+  font-size: 0.75rem;
+  font-weight: 700;
+  font-family: var(--font);
+  cursor: pointer;
+  transition: var(--transition);
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  border-radius: 8px;
+  position: relative;
+}
+
+.mode-btn.active {
+  background: linear-gradient(135deg, var(--accent) 0%, var(--accent-light) 100%);
+  color: var(--text-dark);
+  box-shadow: 0 2px 12px var(--accent-glow);
+}
+
+.mode-btn:not(.active):hover {
+  color: var(--text-white);
+  background: rgba(255, 255, 255, 0.05);
+}
+
+/* ── Set Info Bar ── */
+.set-info {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 16px 20px;
+}
+
+.set-info-stats {
+  display: flex;
+  gap: 16px;
+}
+
+.stat {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+}
+
+.stat-value {
+  font-size: 1.3rem;
+  font-weight: 700;
+  color: var(--accent);
+}
+
+.stat-label {
+  font-size: 0.7rem;
+  color: var(--text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+/* ── Cards Grid ── */
+.cards-grid {
+  padding: 8px 16px 80px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  flex: 1;
+  overflow-y: auto;
+}
+
+.card-item {
+  background: var(--card-white);
+  border-radius: var(--radius);
+  padding: 20px;
+  color: var(--text-dark);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+  transition: var(--transition);
+  cursor: pointer;
+}
+
+.card-item:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 6px 20px rgba(0, 0, 0, 0.15);
+}
+
+.card-item-front {
+  font-size: 1.1rem;
+  font-weight: 600;
+  margin-bottom: 8px;
+  color: var(--text-dark);
+}
+
+.card-item-back {
+  font-size: 0.9rem;
+  color: var(--text-muted-dark);
+  padding-top: 8px;
+  border-top: 1px solid #e9ecef;
+}
+
+/* ── Floating Action Buttons ── */
+.fab-container {
+  position: fixed;
+  bottom: 24px;
+  right: 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  z-index: 50;
+}
+
+.fab {
+  width: 56px;
+  height: 56px;
+  border-radius: 50%;
+  border: none;
+  background: linear-gradient(135deg, var(--accent) 0%, var(--accent-light) 100%);
+  color: var(--text-dark);
+  font-size: 1.5rem;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 0 4px 20px var(--accent-glow);
+  transition: var(--transition);
+}
+
+.fab:hover {
+  transform: scale(1.1) translateY(-2px);
+  box-shadow: 0 8px 28px var(--accent-glow);
+}
+
+.fab:active {
+  transform: scale(0.95);
+}
+
+/* ============================================
+   CRAM MODE / STUDY VIEW
+   ============================================ */
+.study-area {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 24px 20px;
+  gap: 24px;
+}
+
+/* ── Card Flip ── */
+.flip-card {
+  width: 100%;
+  max-width: 400px;
+  aspect-ratio: 3 / 2;
+  perspective: 1000px;
+  cursor: pointer;
+}
+
+.flip-card-inner {
+  position: relative;
+  width: 100%;
+  height: 100%;
+  transition: transform 0.6s cubic-bezier(0.4, 0, 0.2, 1);
+  transform-style: preserve-3d;
+}
+
+.flip-card.flipped .flip-card-inner {
+  transform: rotateY(180deg);
+}
+
+.flip-card-front,
+.flip-card-back {
+  position: absolute;
+  inset: 0;
+  backface-visibility: hidden;
+  -webkit-backface-visibility: hidden;
+  border-radius: var(--radius-lg);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 24px;
+  text-align: center;
+  font-size: 1.5rem;
+  font-weight: 600;
+  word-break: break-word;
+  overflow-y: auto;
+}
+
+.flip-card-front {
+  background: var(--card-white);
+  color: var(--text-dark);
+  box-shadow: var(--shadow-lg);
+}
+
+.flip-card-back {
+  background: linear-gradient(135deg, #f0f9e8 0%, #e8f5e9 100%);
+  color: var(--text-dark);
+  transform: rotateY(180deg);
+  box-shadow: var(--shadow-lg);
+}
+
+.flip-hint {
+  font-size: 0.78rem;
+  color: var(--text-muted);
+  text-align: center;
+  animation: pulse 2s ease-in-out infinite;
+}
+
+@keyframes pulse {
+  0%, 100% { opacity: 0.5; }
+  50% { opacity: 1; }
+}
+
+/* ── Card Counter ── */
+.card-counter {
+  font-size: 0.9rem;
+  color: var(--text-muted);
+  text-align: center;
+}
+
+.card-counter strong {
+  color: var(--accent);
+}
+
+/* ── Answer Buttons ── */
+.answer-buttons {
+  display: flex;
+  gap: 32px;
+  padding: 8px 0 16px;
+}
+
+.answer-btn {
+  width: 64px;
+  height: 64px;
+  border-radius: 50%;
+  border: 3px solid;
+  background: transparent;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1.8rem;
+  transition: var(--transition);
+}
+
+.answer-btn.wrong {
+  border-color: var(--danger);
+  color: var(--danger);
+}
+
+.answer-btn.wrong:hover {
+  background: var(--danger-glow);
+  transform: scale(1.1);
+}
+
+.answer-btn.correct {
+  border-color: var(--success);
+  color: var(--success);
+}
+
+.answer-btn.correct:hover {
+  background: var(--success-glow);
+  transform: scale(1.1);
+}
+
+.answer-btn:active {
+  transform: scale(0.9);
+}
+
+/* ── Level Progress Bar ── */
+.level-bar {
+  display: flex;
+  width: 100%;
+  max-width: 400px;
+  gap: 2px;
+  padding: 0 4px;
+}
+
+.level-segment {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+}
+
+.level-segment-bar {
+  width: 100%;
+  height: 6px;
+  border-radius: 3px;
+  background: var(--glass);
+  position: relative;
+  overflow: hidden;
+}
+
+.level-segment-bar.active {
+  background: var(--accent);
+  box-shadow: 0 0 8px var(--accent-glow);
+}
+
+.level-segment-label {
+  font-size: 0.65rem;
+  color: var(--text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.level-segment-count {
+  font-size: 0.9rem;
+  font-weight: 700;
+  color: var(--text-white);
+}
+
+.level-segment.active .level-segment-count {
+  color: var(--accent);
+}
+
+/* ============================================
+   LEVEL RESULTS VIEW
+   ============================================ */
+.results-content {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  padding: 32px 20px;
+  gap: 28px;
+}
+
+.results-title {
+  font-size: 1.75rem;
+  font-weight: 700;
+}
+
+.results-stats {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.result-arrow {
+  display: flex;
+  align-items: center;
+  padding: 20px 24px;
+  border-radius: var(--radius-lg);
+  gap: 16px;
+  font-weight: 700;
+  font-size: 0.95rem;
+  position: relative;
+  overflow: hidden;
+}
+
+.result-arrow.promoted {
+  background: linear-gradient(90deg, rgba(124, 207, 0, 0.15) 0%, rgba(124, 207, 0, 0.25) 100%);
+  border: 1px solid rgba(124, 207, 0, 0.3);
+  color: var(--accent-light);
+}
+
+.result-arrow.demoted {
+  background: linear-gradient(90deg, rgba(255, 255, 255, 0.08) 0%, rgba(255, 255, 255, 0.15) 100%);
+  border: 1px solid var(--glass-border);
+  color: var(--text-white);
+}
+
+.result-arrow-icon {
+  font-size: 1.8rem;
+  flex-shrink: 0;
+}
+
+.result-arrow-num {
+  font-size: 2rem;
+  font-weight: 800;
+  min-width: 40px;
+}
+
+.result-arrow-text {
+  font-size: 0.85rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  line-height: 1.3;
+}
+
+.results-continue {
+  margin-top: auto;
+  padding: 20px;
+}
+
+.continue-btn {
+  width: 100%;
+  padding: 18px 32px;
+  background: linear-gradient(135deg, var(--accent) 0%, var(--accent-light) 100%);
+  color: var(--text-dark);
+  border: none;
+  border-radius: var(--radius);
+  font-size: 1.1rem;
+  font-weight: 700;
+  font-family: var(--font);
+  cursor: pointer;
+  transition: var(--transition);
+  box-shadow: 0 4px 20px var(--accent-glow);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+}
+
+.continue-btn:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 8px 28px var(--accent-glow);
+}
+
+.continue-btn:active {
+  transform: translateY(0);
+}
+
+/* ============================================
+   MEMORIZE MODE
+   ============================================ */
+.memorize-controls {
+  display: flex;
+  gap: 16px;
+  align-items: center;
+}
+
+.nav-btn {
+  width: 48px;
+  height: 48px;
+  border-radius: 50%;
+  border: 2px solid var(--glass-border);
+  background: var(--glass);
+  color: var(--text-white);
+  font-size: 1.2rem;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: var(--transition-fast);
+}
+
+.nav-btn:hover {
+  border-color: var(--accent);
+  background: var(--glass-hover);
+}
+
+.nav-btn:active {
+  transform: scale(0.9);
+}
+
+.nav-btn:disabled {
+  opacity: 0.3;
+  cursor: not-allowed;
+}
+
+/* ============================================
+   MODAL / OVERLAY
+   ============================================ */
+.modal-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.6);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  z-index: 200;
+  display: none;
+  align-items: flex-end;
+  justify-content: center;
+  animation: fadeIn 200ms ease;
+}
+
+.modal-overlay.open {
+  display: flex;
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+.modal-content {
+  background: linear-gradient(160deg, var(--primary) 0%, var(--primary-dark) 100%);
+  border: 1px solid var(--glass-border);
+  border-radius: var(--radius-xl) var(--radius-xl) 0 0;
+  padding: 24px 20px 40px;
+  width: 100%;
+  max-width: 500px;
+  max-height: 80vh;
+  overflow-y: auto;
+  animation: slideUp 300ms cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+@keyframes slideUp {
+  from {
+    transform: translateY(100%);
+  }
+  to {
+    transform: translateY(0);
+  }
+}
+
+.modal-handle {
+  width: 36px;
+  height: 4px;
+  background: var(--glass-border);
+  border-radius: 2px;
+  margin: 0 auto 16px;
+}
+
+.modal-title {
+  font-size: 1.2rem;
+  font-weight: 700;
+  margin-bottom: 20px;
+}
+
+/* ── Confirm Dialog ── */
+.confirm-actions {
+  display: flex;
+  gap: 12px;
+  margin-top: 20px;
+}
+
+.confirm-actions button {
+  flex: 1;
+}
+
+/* ============================================
+   SET ACTIONS (within card set view)
+   ============================================ */
+.set-actions {
+  display: flex;
+  gap: 8px;
+  padding: 8px 16px 16px;
+  flex-wrap: wrap;
+}
+
+.set-actions button {
+  flex: 1;
+  min-width: 120px;
+}
+
+/* ============================================
+   TOAST NOTIFICATIONS
+   ============================================ */
+.toast-container {
+  position: fixed;
+  top: 20px;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 300;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  pointer-events: none;
+}
+
+.toast {
+  padding: 12px 24px;
+  background: var(--primary);
+  border: 1px solid var(--glass-border);
+  border-radius: var(--radius);
+  color: var(--text-white);
+  font-size: 0.9rem;
+  font-weight: 500;
+  box-shadow: var(--shadow);
+  backdrop-filter: blur(20px);
+  animation: toastIn 300ms ease, toastOut 300ms ease 2.5s forwards;
+  pointer-events: auto;
+  white-space: nowrap;
+}
+
+.toast.success {
+  border-color: var(--success);
+  background: linear-gradient(135deg, rgba(46, 213, 115, 0.2), var(--primary));
+}
+
+.toast.error {
+  border-color: var(--danger);
+  background: linear-gradient(135deg, rgba(255, 71, 87, 0.2), var(--primary));
+}
+
+@keyframes toastIn {
+  from {
+    opacity: 0;
+    transform: translateY(-20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes toastOut {
+  from {
+    opacity: 1;
+    transform: translateY(0);
+  }
+  to {
+    opacity: 0;
+    transform: translateY(-20px);
+  }
+}
+
+/* ============================================
+   RESPONSIVE
+   ============================================ */
+@media (min-width: 600px) {
+  .flip-card {
+    max-width: 480px;
+  }
+
+  .set-list {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+    gap: 10px;
+  }
+
+  .cards-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
+    gap: 12px;
+  }
+
+  .modal-content {
+    border-radius: var(--radius-xl);
+    margin-bottom: 20px;
+  }
+
+  .modal-overlay {
+    align-items: center;
+  }
+}
+
+@media (min-width: 900px) {
+  .header {
+    padding: 16px 32px;
+  }
+
+  .form-section {
+    max-width: 600px;
+    margin: 0 auto;
+    width: 100%;
+  }
+
+  .results-content {
+    max-width: 600px;
+    margin: 0 auto;
+    width: 100%;
+  }
+}
+
+/* ============================================
+   UTILITY CLASSES
+   ============================================ */
+.hidden {
+  display: none !important;
+}
+
+.mt-auto {
+  margin-top: auto;
+}
+
+.text-center {
+  text-align: center;
+}
+
+.gap-sm {
+  gap: 8px;
+}
+
+.flex-row {
+  display: flex;
+  align-items: center;
+}
+
+.flex-1 {
+  flex: 1;
+}
+
+/* ── Loading Spinner ── */
+.spinner {
+  width: 32px;
+  height: 32px;
+  border: 3px solid var(--glass);
+  border-top-color: var(--accent);
+  border-radius: 50%;
+  animation: spin 0.8s linear infinite;
+}
+
+@keyframes spin {
+  to { transform: rotate(360deg); }
+}
+
+/* ── Swipe Animation ── */
+.card-swipe-left {
+  animation: swipeLeft 300ms ease forwards;
+}
+
+.card-swipe-right {
+  animation: swipeRight 300ms ease forwards;
+}
+
+@keyframes swipeLeft {
+  to {
+    transform: translateX(-120%) rotate(-15deg);
+    opacity: 0;
+  }
+}
+
+@keyframes swipeRight {
+  to {
+    transform: translateX(120%) rotate(15deg);
+    opacity: 0;
+  }
+}
+
+/* ── Progress percentage for memorized ── */
+.progress-ring {
+  position: relative;
+  width: 60px;
+  height: 60px;
+}
+
+.progress-ring-circle {
+  transition: stroke-dashoffset 0.35s;
+  transform: rotate(-90deg);
+  transform-origin: 50% 50%;
+}
+
+  </style>
+</head>
+<body>
+  <div id="app">
+
+    <!-- ════════════════════════════════════
+         HOME VIEW
+         ════════════════════════════════════ -->
+    <section id="view-home" class="view active">
+      <header class="header">
+        <div class="header-left">
+          <span class="header-title">Cram</span>
+        </div>
+        <div class="header-right">
+          <button class="icon-btn" id="btn-search" aria-label="Search">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+          </button>
+        </div>
+      </header>
+
+      <div class="search-bar" id="search-bar">
+        <input type="text" class="search-input" id="search-input" placeholder="Search flashcard sets...">
+      </div>
+
+      <div class="create-banner" id="create-banner">
+        <h2>Create Flashcards</h2>
+        <button class="create-btn" aria-label="Create new set">+</button>
+      </div>
+
+      <div class="section-header">
+        <h2>My Flashcards</h2>
+        <span class="badge"><span class="badge-num" id="set-count">0</span> sets</span>
+      </div>
+
+      <div class="set-list" id="set-list">
+        <div class="empty-state" id="empty-state">
+          <div class="empty-state-icon">📚</div>
+          <p class="empty-state-text">No flashcard sets yet. Create one or import a CSV to get started!</p>
+        </div>
+      </div>
+    </section>
+
+    <!-- ════════════════════════════════════
+         CREATE / EDIT SET VIEW
+         ════════════════════════════════════ -->
+    <section id="view-create" class="view">
+      <header class="header">
+        <div class="header-left">
+          <button class="icon-btn" id="btn-back-create" aria-label="Go back">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="15 18 9 12 15 6"/></svg>
+          </button>
+          <span class="header-title" id="create-title">New Card Set</span>
+        </div>
+      </header>
+
+      <div class="form-section">
+        <div class="form-group">
+          <label class="form-label" for="set-name-input">Set Name</label>
+          <input type="text" class="form-input" id="set-name-input" placeholder="e.g., Chemistry Elements">
+        </div>
+
+        <div class="form-group">
+          <label class="form-label">Import from CSV</label>
+          <div class="csv-upload" id="csv-upload">
+            <div class="csv-upload-icon">📄</div>
+            <div class="csv-upload-text">Drop CSV file here or tap to browse</div>
+            <div class="csv-upload-hint">Format: front,back (one card per row)</div>
+            <input type="file" accept=".csv,.tsv,.txt" id="csv-file-input">
+          </div>
+        </div>
+
+        <div class="form-group">
+          <label class="form-label">Add Cards Manually</label>
+          <div class="card-entry">
+            <div class="card-entry-inputs">
+              <div class="form-group">
+                <input type="text" class="form-input" id="card-front-input" placeholder="Front">
+              </div>
+              <div class="form-group">
+                <input type="text" class="form-input" id="card-back-input" placeholder="Back">
+              </div>
+            </div>
+            <button class="add-card-btn" id="btn-add-card" aria-label="Add card">+</button>
+          </div>
+        </div>
+
+        <div class="form-group" id="preview-section" style="display:none;">
+          <label class="form-label">Cards (<span id="card-count">0</span>)</label>
+          <div class="card-preview-list" id="card-preview-list"></div>
+        </div>
+
+        <button class="btn-primary" id="btn-save-set" disabled>Save Card Set</button>
+      </div>
+    </section>
+
+    <!-- ════════════════════════════════════
+         CARD SET VIEW
+         ════════════════════════════════════ -->
+    <section id="view-set" class="view">
+      <header class="header">
+        <div class="header-left">
+          <button class="icon-btn" id="btn-back-set" aria-label="Go back">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="15 18 9 12 15 6"/></svg>
+          </button>
+          <span class="header-title" id="set-title">Card Set</span>
+        </div>
+        <div class="header-right">
+          <button class="icon-btn" id="btn-edit-set" aria-label="Edit set">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
+          </button>
+          <button class="icon-btn" id="btn-delete-set" aria-label="Delete set">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>
+          </button>
+        </div>
+      </header>
+
+      <div class="mode-selector" id="mode-selector">
+        <button class="mode-btn active" data-mode="cards">Card Set</button>
+        <button class="mode-btn" data-mode="memorize">Memorize</button>
+        <button class="mode-btn" data-mode="cram">Cram Mode</button>
+      </div>
+
+      <div class="set-info">
+        <div class="set-info-stats">
+          <div class="stat">
+            <span class="stat-value" id="stat-total">0</span>
+            <span class="stat-label">Cards</span>
+          </div>
+          <div class="stat">
+            <span class="stat-value" id="stat-memorized">0</span>
+            <span class="stat-label">Memorized</span>
+          </div>
+        </div>
+      </div>
+
+      <div class="set-actions">
+        <button class="btn-secondary" id="btn-export-csv">📥 Export CSV</button>
+        <button class="btn-secondary" id="btn-reset-progress">🔄 Reset Progress</button>
+      </div>
+
+      <div class="cards-grid" id="cards-grid"></div>
+    </section>
+
+    <!-- ════════════════════════════════════
+         CRAM MODE VIEW
+         ════════════════════════════════════ -->
+    <section id="view-cram" class="view">
+      <header class="header">
+        <div class="header-left">
+          <button class="icon-btn" id="btn-back-cram" aria-label="Go back">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="15 18 9 12 15 6"/></svg>
+          </button>
+          <span class="header-title">Cram Mode</span>
+        </div>
+        <div class="header-right">
+          <button class="icon-btn" id="btn-cram-reverse" aria-label="Reverse cards" title="Reverse (show back first)">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="17 1 21 5 17 9"/><path d="M3 11V9a4 4 0 0 1 4-4h14"/><polyline points="7 23 3 19 7 15"/><path d="M21 13v2a4 4 0 0 1-4 4H3"/></svg>
+          </button>
+          <button class="icon-btn" id="btn-cram-shuffle" aria-label="Shuffle cards" title="Shuffle remaining cards">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="16 3 21 3 21 8"/><line x1="4" y1="20" x2="21" y2="3"/><polyline points="21 16 21 21 16 21"/><line x1="15" y1="15" x2="21" y2="21"/><line x1="4" y1="4" x2="9" y2="9"/></svg>
+          </button>
+        </div>
+      </header>
+
+      <div class="study-area">
+        <div class="card-counter" id="cram-counter">
+          Card <strong>1</strong> of <strong>10</strong>
+        </div>
+
+        <div class="flip-card" id="cram-card">
+          <div class="flip-card-inner">
+            <div class="flip-card-front" id="cram-front">
+              <span>Front</span>
+            </div>
+            <div class="flip-card-back" id="cram-back">
+              <span>Back</span>
+            </div>
+          </div>
+        </div>
+
+        <p class="flip-hint" id="flip-hint">Tap card to reveal answer</p>
+
+        <div class="answer-buttons" id="answer-buttons" style="visibility: hidden;">
+          <button class="answer-btn wrong" id="btn-wrong" aria-label="Wrong">✕</button>
+          <button class="answer-btn correct" id="btn-correct" aria-label="Correct">✓</button>
+        </div>
+
+        <div class="level-bar" id="level-bar">
+          <div class="level-segment" data-level="1">
+            <span class="level-segment-count" id="level-1-count">0</span>
+            <div class="level-segment-bar"></div>
+            <span class="level-segment-label">Lv 1</span>
+          </div>
+          <div class="level-segment" data-level="2">
+            <span class="level-segment-count" id="level-2-count">0</span>
+            <div class="level-segment-bar"></div>
+            <span class="level-segment-label">Lv 2</span>
+          </div>
+          <div class="level-segment" data-level="3">
+            <span class="level-segment-count" id="level-3-count">0</span>
+            <div class="level-segment-bar"></div>
+            <span class="level-segment-label">Lv 3</span>
+          </div>
+          <div class="level-segment" data-level="4">
+            <span class="level-segment-count" id="level-4-count">0</span>
+            <div class="level-segment-bar"></div>
+            <span class="level-segment-label">Lv 4</span>
+          </div>
+          <div class="level-segment" data-level="5">
+            <span class="level-segment-count" id="level-5-count">0</span>
+            <div class="level-segment-bar"></div>
+            <span class="level-segment-label">Done</span>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ════════════════════════════════════
+         MEMORIZE MODE VIEW
+         ════════════════════════════════════ -->
+    <section id="view-memorize" class="view">
+      <header class="header">
+        <div class="header-left">
+          <button class="icon-btn" id="btn-back-memorize" aria-label="Go back">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="15 18 9 12 15 6"/></svg>
+          </button>
+          <span class="header-title">Memorize</span>
+        </div>
+        <div class="header-right">
+          <button class="icon-btn" id="btn-shuffle" aria-label="Shuffle cards">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="16 3 21 3 21 8"/><line x1="4" y1="20" x2="21" y2="3"/><polyline points="21 16 21 21 16 21"/><line x1="15" y1="15" x2="21" y2="21"/><line x1="4" y1="4" x2="9" y2="9"/></svg>
+          </button>
+        </div>
+      </header>
+
+      <div class="study-area">
+        <div class="card-counter" id="memorize-counter">
+          Card <strong>1</strong> of <strong>10</strong>
+        </div>
+
+        <div class="flip-card" id="memorize-card">
+          <div class="flip-card-inner">
+            <div class="flip-card-front" id="memorize-front">
+              <span>Front</span>
+            </div>
+            <div class="flip-card-back" id="memorize-back">
+              <span>Back</span>
+            </div>
+          </div>
+        </div>
+
+        <p class="flip-hint">Tap card to flip</p>
+
+        <div class="memorize-controls">
+          <button class="nav-btn" id="btn-prev" aria-label="Previous card">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="15 18 9 12 15 6"/></svg>
+          </button>
+          <span class="card-counter" id="memorize-position" style="min-width: 80px; text-align: center;"></span>
+          <button class="nav-btn" id="btn-next" aria-label="Next card">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="9 18 15 12 9 6"/></svg>
+          </button>
+        </div>
+      </div>
+    </section>
+
+    <!-- ════════════════════════════════════
+         LEVEL RESULTS VIEW
+         ════════════════════════════════════ -->
+    <section id="view-results" class="view">
+      <header class="header">
+        <div class="header-left">
+          <button class="icon-btn" id="btn-back-results" aria-label="Go back">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="15 18 9 12 15 6"/></svg>
+          </button>
+          <span class="header-title">Cram Mode</span>
+        </div>
+      </header>
+
+      <div class="results-content">
+        <h1 class="results-title" id="results-level-title">Level 1 Results</h1>
+
+        <div class="results-stats" id="results-stats">
+          <!-- Populated by JS -->
+        </div>
+
+        <div class="results-continue">
+          <button class="continue-btn" id="btn-continue-cram">
+            <span id="continue-text">Continue</span>
+            <span>›</span>
+          </button>
+        </div>
+      </div>
+    </section>
+
+    <!-- ════════════════════════════════════
+         DELETE CONFIRM MODAL
+         ════════════════════════════════════ -->
+    <div class="modal-overlay" id="modal-confirm">
+      <div class="modal-content">
+        <div class="modal-handle"></div>
+        <h3 class="modal-title" id="confirm-title">Delete this set?</h3>
+        <p id="confirm-message" style="color: var(--text-muted); margin-bottom: 4px;">This action cannot be undone.</p>
+        <div class="confirm-actions">
+          <button class="btn-secondary" id="btn-confirm-cancel">Cancel</button>
+          <button class="btn-danger" id="btn-confirm-ok">Delete</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- ════════════════════════════════════
+         TOAST CONTAINER
+         ════════════════════════════════════ -->
+    <div class="toast-container" id="toast-container"></div>
+
+  </div>
+
+  <script>
+/* ============================================
+   CRAM FLASHCARD PWA — Application Logic
+   ============================================ */
+
+// ═══════════════════════════════════════════
+// DATABASE (IndexedDB + localStorage fallback)
+// ═══════════════════════════════════════════
+const DB = {
+  db: null,
+  DB_NAME: 'CramDB',
+  DB_VERSION: 1,
+  _ls: false,  // true = using localStorage fallback
+  _data: null, // localStorage data cache
+
+  async init() {
+    // Try IndexedDB first, fall back to localStorage
+    try {
+      if (typeof indexedDB === 'undefined') throw new Error('No IndexedDB');
+      await this._initIDB();
+      console.log('DB: Using IndexedDB');
+    } catch (e) {
+      console.warn('DB: IndexedDB unavailable, using localStorage', e);
+      this._ls = true;
+      this._lsLoad();
+    }
+  },
+
+  // ── IndexedDB init ──
+  _initIDB() {
+    return new Promise((resolve, reject) => {
+      const request = indexedDB.open(this.DB_NAME, this.DB_VERSION);
+      request.onupgradeneeded = (e) => {
+        const db = e.target.result;
+        if (!db.objectStoreNames.contains('sets')) {
+          const s = db.createObjectStore('sets', { keyPath: 'id', autoIncrement: true });
+          s.createIndex('name', 'name', { unique: false });
+          s.createIndex('createdAt', 'createdAt', { unique: false });
+        }
+        if (!db.objectStoreNames.contains('cards')) {
+          db.createObjectStore('cards', { keyPath: 'id', autoIncrement: true })
+            .createIndex('setId', 'setId', { unique: false });
+        }
+      };
+      request.onsuccess = (e) => { this.db = e.target.result; resolve(); };
+      request.onerror = (e) => reject(e.target.error);
+    });
+  },
+
+  // ── localStorage helpers ──
+  _lsLoad() {
+    try {
+      const raw = localStorage.getItem('cramData');
+      this._data = raw ? JSON.parse(raw) : { sets: [], cards: [], nsi: 1, nci: 1 };
+    } catch (e) {
+      this._data = { sets: [], cards: [], nsi: 1, nci: 1 };
+    }
+  },
+  _lsSave() { localStorage.setItem('cramData', JSON.stringify(this._data)); },
+
+  // ── IDB helpers ──
+  _tx(storeName, mode = 'readonly') {
+    return this.db.transaction(storeName, mode).objectStore(storeName);
+  },
+  _request(req) {
+    return new Promise((resolve, reject) => {
+      req.onsuccess = () => resolve(req.result);
+      req.onerror = () => reject(req.error);
+    });
+  },
+
+  // ── Sets ──
+  async getAllSets() {
+    if (this._ls) return [...this._data.sets];
+    return this._request(this._tx('sets').getAll());
+  },
+
+  async getSet(id) {
+    if (this._ls) return this._data.sets.find(s => s.id === id) || null;
+    return this._request(this._tx('sets').get(id));
+  },
+
+  async createSet(name) {
+    const set = { name, createdAt: Date.now(), lastStudied: null };
+    if (this._ls) {
+      set.id = this._data.nsi++;
+      this._data.sets.push(set);
+      this._lsSave();
+      return set;
+    }
+    const store = this._tx('sets', 'readwrite');
+    const id = await this._request(store.add(set));
+    set.id = id;
+    return set;
+  },
+
+  async updateSet(id, updates) {
+    if (this._ls) {
+      const set = this._data.sets.find(s => s.id === id);
+      if (!set) return null;
+      Object.assign(set, updates);
+      this._lsSave();
+      return set;
+    }
+    const set = await this.getSet(id);
+    if (!set) return null;
+    Object.assign(set, updates);
+    await this._request(this._tx('sets', 'readwrite').put(set));
+    return set;
+  },
+
+  async deleteSet(id) {
+    if (this._ls) {
+      this._data.sets = this._data.sets.filter(s => s.id !== id);
+      this._data.cards = this._data.cards.filter(c => c.setId !== id);
+      this._lsSave();
+      return;
+    }
+    const cards = await this.getCardsBySet(id);
+    const cardStore = this._tx('cards', 'readwrite');
+    for (const card of cards) cardStore.delete(card.id);
+    return this._request(this._tx('sets', 'readwrite').delete(id));
+  },
+
+  // ── Cards ──
+  async getCardsBySet(setId) {
+    if (this._ls) return this._data.cards.filter(c => c.setId === setId);
+    return this._request(this._tx('cards').index('setId').getAll(setId));
+  },
+
+  async addCard(setId, front, back) {
+    const card = { setId, front, back, level: 1 };
+    if (this._ls) {
+      card.id = this._data.nci++;
+      this._data.cards.push(card);
+      this._lsSave();
+      return card;
+    }
+    const store = this._tx('cards', 'readwrite');
+    const id = await this._request(store.add(card));
+    card.id = id;
+    return card;
+  },
+
+  async addCards(setId, cardsData) {
+    if (this._ls) {
+      const cards = [];
+      for (const { front, back } of cardsData) {
+        const card = { setId, front, back, level: 1, id: this._data.nci++ };
+        this._data.cards.push(card);
+        cards.push(card);
+      }
+      this._lsSave();
+      return cards;
+    }
+    const store = this._tx('cards', 'readwrite');
+    const cards = [];
+    for (const { front, back } of cardsData) {
+      const card = { setId, front, back, level: 1 };
+      const req = store.add(card);
+      await this._request(req);
+      card.id = req.result;
+      cards.push(card);
+    }
+    return cards;
+  },
+
+  async updateCard(id, updates) {
+    if (this._ls) {
+      const card = this._data.cards.find(c => c.id === id);
+      if (!card) return null;
+      Object.assign(card, updates);
+      this._lsSave();
+      return card;
+    }
+    const store = this._tx('cards');
+    const card = await this._request(store.get(id));
+    if (!card) return null;
+    Object.assign(card, updates);
+    await this._request(this._tx('cards', 'readwrite').put(card));
+    return card;
+  },
+
+  async deleteCard(id) {
+    if (this._ls) {
+      this._data.cards = this._data.cards.filter(c => c.id !== id);
+      this._lsSave();
+      return;
+    }
+    return this._request(this._tx('cards', 'readwrite').delete(id));
+  },
+
+  async resetProgress(setId) {
+    if (this._ls) {
+      this._data.cards.forEach(c => { if (c.setId === setId) c.level = 1; });
+      this._lsSave();
+      return;
+    }
+    const cards = await this.getCardsBySet(setId);
+    const store = this._tx('cards', 'readwrite');
+    for (const card of cards) { card.level = 1; store.put(card); }
+  },
+};
+
+
+// ═══════════════════════════════════════════
+// CSV PARSER
+// ═══════════════════════════════════════════
+const CSV = {
+  parse(text) {
+    const lines = text.split(/\r?\n/).filter(line => line.trim() !== '');
+    if (lines.length === 0) return [];
+
+    // Auto-detect delimiter
+    const firstLine = lines[0];
+    const tabCount = (firstLine.match(/\t/g) || []).length;
+    const commaCount = (firstLine.match(/,/g) || []).length;
+    const semiCount = (firstLine.match(/;/g) || []).length;
+    const delimiter = tabCount > commaCount ? '\t' : (semiCount > commaCount ? ';' : ',');
+
+    // Check if first line is a header
+    const firstParsed = this._parseLine(lines[0], delimiter);
+    const isHeader = firstParsed.length >= 2 &&
+      firstParsed.every(cell => /^[a-zA-Z\s_-]+$/.test(cell.trim()));
+
+    const startIndex = isHeader ? 1 : 0;
+    const results = [];
+
+    for (let i = startIndex; i < lines.length; i++) {
+      const cells = this._parseLine(lines[i], delimiter);
+      if (cells.length >= 2 && (cells[0].trim() || cells[1].trim())) {
+        results.push({
+          front: cells[0].trim(),
+          back: cells[1].trim(),
+        });
+      }
+    }
+
+    return results;
+  },
+
+  _parseLine(line, delimiter) {
+    const cells = [];
+    let current = '';
+    let inQuotes = false;
+
+    for (let i = 0; i < line.length; i++) {
+      const char = line[i];
+
+      if (inQuotes) {
+        if (char === '"' && line[i + 1] === '"') {
+          current += '"';
+          i++;
+        } else if (char === '"') {
+          inQuotes = false;
+        } else {
+          current += char;
+        }
+      } else {
+        if (char === '"') {
+          inQuotes = true;
+        } else if (char === delimiter) {
+          cells.push(current);
+          current = '';
+        } else {
+          current += char;
+        }
+      }
+    }
+    cells.push(current);
+    return cells;
+  },
+
+  export(cards) {
+    let csv = 'front,back\n';
+    for (const card of cards) {
+      const front = card.front.includes(',') ? `"${card.front.replace(/"/g, '""')}"` : card.front;
+      const back = card.back.includes(',') ? `"${card.back.replace(/"/g, '""')}"` : card.back;
+      csv += `${front},${back}\n`;
+    }
+    return csv;
+  },
+};
+
+
+// ═══════════════════════════════════════════
+// ROUTER / VIEW MANAGEMENT
+// ═══════════════════════════════════════════
+const Router = {
+  currentView: 'home',
+  viewStack: [],
+
+  navigate(viewName, pushStack = true) {
+    const current = document.querySelector('.view.active');
+    if (current) current.classList.remove('active');
+
+    const next = document.getElementById(`view-${viewName}`);
+    if (next) {
+      next.classList.add('active');
+      // Re-trigger animation
+      next.style.animation = 'none';
+      next.offsetHeight; // force reflow
+      next.style.animation = '';
+    }
+
+    if (pushStack && this.currentView !== viewName) {
+      this.viewStack.push(this.currentView);
+    }
+
+    this.currentView = viewName;
+  },
+
+  back() {
+    const prev = this.viewStack.pop();
+    if (prev) {
+      this.navigate(prev, false);
+    } else {
+      this.navigate('home', false);
+    }
+  },
+};
+
+
+// ═══════════════════════════════════════════
+// CRAM ENGINE
+// ═══════════════════════════════════════════
+const CramEngine = {
+  allCards: [],
+  currentLevelCards: [],
+  currentIndex: 0,
+  currentLevel: 1,
+  results: { promoted: 0, demoted: 0, promotedToLevel: 0, demotedToLevel: 0 },
+  setId: null,
+
+  start(cards, setId) {
+    this.allCards = cards;
+    this.setId = setId;
+    this.currentLevel = this._findLowestLevel();
+    this._loadCurrentLevel();
+  },
+
+  _findLowestLevel() {
+    let lowest = 5;
+    for (const card of this.allCards) {
+      if (card.level < lowest) lowest = card.level;
+    }
+    return lowest < 5 ? lowest : 1;
+  },
+
+  _loadCurrentLevel() {
+    this.currentLevelCards = this.allCards.filter(c => c.level === this.currentLevel);
+    // Shuffle
+    for (let i = this.currentLevelCards.length - 1; i > 0; i--) {
+      const j = Math.floor(Math.random() * (i + 1));
+      [this.currentLevelCards[i], this.currentLevelCards[j]] = [this.currentLevelCards[j], this.currentLevelCards[i]];
+    }
+    this.currentIndex = 0;
+    this.results = { promoted: 0, demoted: 0, promotedToLevel: 0, demotedToLevel: 0 };
+  },
+
+  getCurrentCard() {
+    if (this.currentIndex >= this.currentLevelCards.length) return null;
+    return this.currentLevelCards[this.currentIndex];
+  },
+
+  async markCorrect() {
+    const card = this.getCurrentCard();
+    if (!card) return;
+
+    const newLevel = Math.min(card.level + 1, 5);
+    card.level = newLevel;
+    await DB.updateCard(card.id, { level: newLevel });
+
+    this.results.promoted++;
+    this.results.promotedToLevel = newLevel;
+    this.currentIndex++;
+  },
+
+  async markWrong() {
+    const card = this.getCurrentCard();
+    if (!card) return;
+
+    const newLevel = 1;
+    card.level = newLevel;
+    await DB.updateCard(card.id, { level: newLevel });
+
+    this.results.demoted++;
+    this.results.demotedToLevel = 1;
+    this.currentIndex++;
+  },
+
+  isLevelComplete() {
+    return this.currentIndex >= this.currentLevelCards.length;
+  },
+
+  getResults() {
+    return {
+      level: this.currentLevel,
+      promoted: this.results.promoted,
+      demoted: this.results.demoted,
+      promotedToLevel: this.currentLevel + 1,
+      demotedToLevel: 1,
+      total: this.currentLevelCards.length,
+    };
+  },
+
+  getLevelCounts() {
+    const counts = { 1: 0, 2: 0, 3: 0, 4: 0, 5: 0 };
+    for (const card of this.allCards) {
+      counts[card.level] = (counts[card.level] || 0) + 1;
+    }
+    return counts;
+  },
+
+  hasMoreLevels() {
+    return this.allCards.some(c => c.level < 5 && c.level !== this.currentLevel);
+  },
+
+  nextLevel() {
+    // Find next level with cards, or loop back
+    for (let l = 1; l <= 4; l++) {
+      if (this.allCards.some(c => c.level === l)) {
+        this.currentLevel = l;
+        this._loadCurrentLevel();
+        return true;
+      }
+    }
+    return false; // All memorized!
+  },
+
+  isAllMemorized() {
+    return this.allCards.every(c => c.level === 5);
+  },
+
+  shuffleRemaining() {
+    const reviewed = this.currentLevelCards.slice(0, this.currentIndex);
+    const remaining = this.currentLevelCards.slice(this.currentIndex);
+    for (let i = remaining.length - 1; i > 0; i--) {
+      const j = Math.floor(Math.random() * (i + 1));
+      [remaining[i], remaining[j]] = [remaining[j], remaining[i]];
+    }
+    this.currentLevelCards = [...reviewed, ...remaining];
+  },
+};
+
+
+// ═══════════════════════════════════════════
+// TOAST NOTIFICATIONS
+// ═══════════════════════════════════════════
+function showToast(message, type = '') {
+  const container = document.getElementById('toast-container');
+  const toast = document.createElement('div');
+  toast.className = `toast ${type}`;
+  toast.textContent = message;
+  container.appendChild(toast);
+  setTimeout(() => toast.remove(), 3000);
+}
+
+
+// ═══════════════════════════════════════════
+// VIEW CONTROLLERS
+// ═══════════════════════════════════════════
+
+// ── Home View ──
+const HomeView = {
+  async render() {
+    const sets = await DB.getAllSets();
+    const setList = document.getElementById('set-list');
+    const emptyState = document.getElementById('empty-state');
+    const setCount = document.getElementById('set-count');
+
+    // Sort by most recently created/studied
+    sets.sort((a, b) => (b.lastStudied || b.createdAt) - (a.lastStudied || a.createdAt));
+
+    setCount.textContent = sets.length;
+
+    // Clear previous items (keep empty state)
+    setList.querySelectorAll('.set-item').forEach(el => el.remove());
+
+    if (sets.length === 0) {
+      emptyState.style.display = 'flex';
+      return;
+    }
+
+    emptyState.style.display = 'none';
+
+    for (const set of sets) {
+      const cards = await DB.getCardsBySet(set.id);
+      const el = document.createElement('div');
+      el.className = 'set-item';
+      el.dataset.id = set.id;
+
+      const memorized = cards.filter(c => c.level === 5).length;
+      const lastStudied = set.lastStudied
+        ? this._timeAgo(set.lastStudied)
+        : 'Not studied yet';
+
+      el.innerHTML = `
+        <div class="set-item-info">
+          <span class="set-item-name">${this._escapeHtml(set.name)}</span>
+          <span class="set-item-meta">${cards.length} cards · ${memorized} memorized · ${lastStudied}</span>
+        </div>
+        <span class="set-item-chevron">›</span>
+      `;
+
+      el.addEventListener('click', () => SetView.open(set.id));
+      setList.appendChild(el);
+    }
+  },
+
+  filter(query) {
+    const items = document.querySelectorAll('.set-item');
+    const q = query.toLowerCase();
+    items.forEach(item => {
+      const name = item.querySelector('.set-item-name').textContent.toLowerCase();
+      item.style.display = name.includes(q) ? '' : 'none';
+    });
+  },
+
+  _timeAgo(timestamp) {
+    const diff = Date.now() - timestamp;
+    const mins = Math.floor(diff / 60000);
+    if (mins < 1) return 'Just now';
+    if (mins < 60) return `${mins}m ago`;
+    const hours = Math.floor(mins / 60);
+    if (hours < 24) return `${hours}h ago`;
+    const days = Math.floor(hours / 24);
+    if (days < 30) return `${days}d ago`;
+    return new Date(timestamp).toLocaleDateString();
+  },
+
+  _escapeHtml(text) {
+    const div = document.createElement('div');
+    div.textContent = text;
+    return div.innerHTML;
+  },
+};
+
+
+// ── Create/Edit View ──
+const CreateView = {
+  pendingCards: [],
+  editingSetId: null,
+
+  open(editSetId = null) {
+    this.pendingCards = [];
+    this.editingSetId = editSetId;
+
+    const titleEl = document.getElementById('create-title');
+    const nameInput = document.getElementById('set-name-input');
+    const saveBtn = document.getElementById('btn-save-set');
+
+    if (editSetId) {
+      titleEl.textContent = 'Edit Card Set';
+      saveBtn.textContent = 'Update Card Set';
+      this._loadExistingSet(editSetId);
+    } else {
+      titleEl.textContent = 'New Card Set';
+      saveBtn.textContent = 'Save Card Set';
+      nameInput.value = '';
+    }
+
+    this._renderPreview();
+    this._updateSaveButton();
+    Router.navigate('create');
+  },
+
+  async _loadExistingSet(setId) {
+    const set = await DB.getSet(setId);
+    const cards = await DB.getCardsBySet(setId);
+
+    document.getElementById('set-name-input').value = set.name;
+    this.pendingCards = cards.map(c => ({ front: c.front, back: c.back, existingId: c.id }));
+    this._renderPreview();
+    this._updateSaveButton();
+  },
+
+  addCard(front, back) {
+    if (!front.trim() || !back.trim()) return;
+    this.pendingCards.push({ front: front.trim(), back: back.trim() });
+    this._renderPreview();
+    this._updateSaveButton();
+  },
+
+  removeCard(index) {
+    this.pendingCards.splice(index, 1);
+    this._renderPreview();
+    this._updateSaveButton();
+  },
+
+  importCSV(text) {
+    const parsed = CSV.parse(text);
+    if (parsed.length === 0) {
+      showToast('No valid cards found in CSV', 'error');
+      return;
+    }
+    this.pendingCards.push(...parsed);
+    this._renderPreview();
+    this._updateSaveButton();
+    showToast(`Imported ${parsed.length} cards`, 'success');
+  },
+
+  _renderPreview() {
+    const section = document.getElementById('preview-section');
+    const list = document.getElementById('card-preview-list');
+    const countEl = document.getElementById('card-count');
+
+    countEl.textContent = this.pendingCards.length;
+
+    if (this.pendingCards.length === 0) {
+      section.style.display = 'none';
+      return;
+    }
+
+    section.style.display = '';
+    list.innerHTML = '';
+
+    this.pendingCards.forEach((card, i) => {
+      const el = document.createElement('div');
+      el.className = 'card-preview-item';
+      el.innerHTML = `
+        <span class="card-preview-front">${HomeView._escapeHtml(card.front)}</span>
+        <span class="card-preview-divider">⟷</span>
+        <span class="card-preview-back">${HomeView._escapeHtml(card.back)}</span>
+        <button class="card-preview-delete" data-index="${i}" aria-label="Remove card">×</button>
+      `;
+      el.querySelector('.card-preview-delete').addEventListener('click', () => this.removeCard(i));
+      list.appendChild(el);
+    });
+  },
+
+  _updateSaveButton() {
+    const name = document.getElementById('set-name-input').value.trim();
+    const btn = document.getElementById('btn-save-set');
+    btn.disabled = !name || this.pendingCards.length === 0;
+  },
+
+  async save() {
+    const name = document.getElementById('set-name-input').value.trim();
+    if (!name || this.pendingCards.length === 0) return;
+
+    const btn = document.getElementById('btn-save-set');
+    btn.disabled = true;
+    btn.textContent = 'Saving...';
+
+    try {
+      if (this.editingSetId) {
+        // Update existing set
+        await DB.updateSet(this.editingSetId, { name });
+
+        // Delete old cards that aren't in the new list
+        const existingCards = await DB.getCardsBySet(this.editingSetId);
+        const keepIds = new Set(this.pendingCards.filter(c => c.existingId).map(c => c.existingId));
+        for (const card of existingCards) {
+          if (!keepIds.has(card.id)) {
+            await DB.deleteCard(card.id);
+          }
+        }
+
+        // Add new cards (ones without existingId)
+        const newCards = this.pendingCards.filter(c => !c.existingId);
+        if (newCards.length > 0) {
+          await DB.addCards(this.editingSetId, newCards);
+        }
+
+        showToast('Card set updated!', 'success');
+      } else {
+        // Create new set
+        const set = await DB.createSet(name);
+        await DB.addCards(set.id, this.pendingCards);
+        showToast(`Created "${name}" with ${this.pendingCards.length} cards!`, 'success');
+      }
+
+      this.pendingCards = [];
+      await HomeView.render();
+      Router.navigate('home', false);
+      Router.viewStack = [];
+    } catch (err) {
+      console.error('Save error:', err);
+      showToast('Failed to save. Please try again.', 'error');
+      btn.disabled = false;
+      btn.textContent = this.editingSetId ? 'Update Card Set' : 'Save Card Set';
+    }
+  },
+};
+
+
+// ── Card Set View ──
+const SetView = {
+  currentSetId: null,
+  currentSet: null,
+  cards: [],
+
+  async open(setId) {
+    this.currentSetId = setId;
+    this.currentSet = await DB.getSet(setId);
+    this.cards = await DB.getCardsBySet(setId);
+
+    document.getElementById('set-title').textContent = this.currentSet.name;
+    document.getElementById('stat-total').textContent = this.cards.length;
+    document.getElementById('stat-memorized').textContent = this.cards.filter(c => c.level === 5).length;
+
+    // Reset mode selector
+    document.querySelectorAll('.mode-btn').forEach(btn => btn.classList.remove('active'));
+    document.querySelector('[data-mode="cards"]').classList.add('active');
+
+    this._renderCards();
+    Router.navigate('set');
+  },
+
+  _renderCards() {
+    const grid = document.getElementById('cards-grid');
+    grid.innerHTML = '';
+
+    if (this.cards.length === 0) {
+      grid.innerHTML = `
+        <div class="empty-state">
+          <div class="empty-state-icon">🃏</div>
+          <p class="empty-state-text">No cards in this set. Edit the set to add some!</p>
+        </div>
+      `;
+      return;
+    }
+
+    this.cards.forEach(card => {
+      const el = document.createElement('div');
+      el.className = 'card-item';
+
+      const levelColors = {
+        1: '#ff6b6b',
+        2: '#ffa502',
+        3: '#ffd93d',
+        4: '#6bcf7f',
+        5: '#2ed573',
+      };
+
+      el.innerHTML = `
+        <div class="card-item-front">${HomeView._escapeHtml(card.front)}</div>
+        <div class="card-item-back">${HomeView._escapeHtml(card.back)}</div>
+        <div style="margin-top:8px;display:flex;align-items:center;gap:6px;">
+          <span style="display:inline-block;width:8px;height:8px;border-radius:50%;background:${levelColors[card.level]};"></span>
+          <span style="font-size:0.72rem;color:#999;">Level ${card.level === 5 ? '✓ Memorized' : card.level}</span>
+        </div>
+      `;
+      grid.appendChild(el);
+    });
+  },
+
+  async exportCSV() {
+    const csvText = CSV.export(this.cards);
+    const blob = new Blob([csvText], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `${this.currentSet.name.replace(/[^a-zA-Z0-9\u0980-\u09FF]/g, '_')}.csv`;
+    a.click();
+    URL.revokeObjectURL(url);
+    showToast('CSV exported!', 'success');
+  },
+
+  async resetProgress() {
+    await DB.resetProgress(this.currentSetId);
+    this.cards = await DB.getCardsBySet(this.currentSetId);
+    this._renderCards();
+    document.getElementById('stat-memorized').textContent = '0';
+    showToast('Progress reset', 'success');
+  },
+};
+
+
+// ── Cram Mode View ──
+const CramView = {
+  isFlipped: false,
+  reversed: false,
+
+  async start() {
+    const cards = await DB.getCardsBySet(SetView.currentSetId);
+    if (cards.length === 0) {
+      showToast('No cards to study!', 'error');
+      return;
+    }
+
+    // Update last studied
+    await DB.updateSet(SetView.currentSetId, { lastStudied: Date.now() });
+
+    CramEngine.start(cards, SetView.currentSetId);
+
+    if (CramEngine.isAllMemorized()) {
+      showToast('All cards memorized! 🎉 Reset progress to study again.', 'success');
+      return;
+    }
+
+    // Reset reverse state button visual
+    document.getElementById('btn-cram-reverse').classList.toggle('active', this.reversed);
+
+    Router.navigate('cram');
+    this._renderCard();
+    this._updateLevelBar();
+  },
+
+  _renderCard() {
+    const card = CramEngine.getCurrentCard();
+    if (!card) {
+      // Level complete — show results
+      this._showResults();
+      return;
+    }
+
+    this.isFlipped = false;
+    const flipCard = document.getElementById('cram-card');
+    flipCard.classList.remove('flipped');
+
+    const frontText = this.reversed ? card.back : card.front;
+    const backText = this.reversed ? card.front : card.back;
+    document.getElementById('cram-front').querySelector('span').textContent = frontText;
+    document.getElementById('cram-back').querySelector('span').textContent = backText;
+
+    const counter = document.getElementById('cram-counter');
+    counter.innerHTML = `Card <strong>${CramEngine.currentIndex + 1}</strong> of <strong>${CramEngine.currentLevelCards.length}</strong> · Level ${CramEngine.currentLevel}`;
+
+    document.getElementById('answer-buttons').style.visibility = 'hidden';
+    document.getElementById('flip-hint').style.display = '';
+  },
+
+  flipCard() {
+    this.isFlipped = !this.isFlipped;
+    const flipCard = document.getElementById('cram-card');
+    flipCard.classList.toggle('flipped', this.isFlipped);
+
+    if (this.isFlipped) {
+      document.getElementById('answer-buttons').style.visibility = 'visible';
+      document.getElementById('flip-hint').style.display = 'none';
+    } else {
+      document.getElementById('answer-buttons').style.visibility = 'hidden';
+      document.getElementById('flip-hint').style.display = '';
+    }
+  },
+
+  async markCorrect() {
+    await CramEngine.markCorrect();
+    this._updateLevelBar();
+    this._animateCard('right');
+  },
+
+  async markWrong() {
+    await CramEngine.markWrong();
+    this._updateLevelBar();
+    this._animateCard('left');
+  },
+
+  shuffle() {
+    CramEngine.shuffleRemaining();
+    this._renderCard();
+    showToast('Cards shuffled!', 'success');
+  },
+
+  toggleReverse() {
+    this.reversed = !this.reversed;
+    document.getElementById('btn-cram-reverse').classList.toggle('active', this.reversed);
+    // Re-render current card with swapped front/back
+    const card = CramEngine.getCurrentCard();
+    if (card) {
+      const flipCard = document.getElementById('cram-card');
+      // If card is flipped, unflip it first
+      if (this.isFlipped) {
+        const inner = flipCard.querySelector('.flip-card-inner');
+        inner.style.transition = 'none';
+        flipCard.classList.remove('flipped');
+        this.isFlipped = false;
+        document.getElementById('answer-buttons').style.visibility = 'hidden';
+        document.getElementById('flip-hint').style.display = '';
+        requestAnimationFrame(() => {
+          requestAnimationFrame(() => { inner.style.transition = ''; });
+        });
+      }
+      this._renderCard();
+    }
+    showToast(this.reversed ? 'Reversed: showing back first' : 'Normal: showing front first', 'success');
+  },
+
+  _animateCard(direction) {
+    const flipCard = document.getElementById('cram-card');
+    flipCard.classList.add(direction === 'left' ? 'card-swipe-left' : 'card-swipe-right');
+
+    setTimeout(() => {
+      // Disable flip transition to prevent back-face flash
+      const inner = flipCard.querySelector('.flip-card-inner');
+      inner.style.transition = 'none';
+
+      flipCard.classList.remove('card-swipe-left', 'card-swipe-right', 'flipped');
+      this.isFlipped = false;
+
+      if (CramEngine.isLevelComplete()) {
+        this._showResults();
+      } else {
+        this._renderCard();
+      }
+
+      // Re-enable flip transition after layout settles
+      requestAnimationFrame(() => {
+        requestAnimationFrame(() => {
+          inner.style.transition = '';
+        });
+      });
+    }, 300);
+  },
+
+  _updateLevelBar() {
+    const counts = CramEngine.getLevelCounts();
+    for (let l = 1; l <= 5; l++) {
+      document.getElementById(`level-${l}-count`).textContent = counts[l];
+      const segment = document.querySelector(`[data-level="${l}"]`);
+      const bar = segment.querySelector('.level-segment-bar');
+
+      segment.classList.toggle('active', l === CramEngine.currentLevel);
+      bar.classList.toggle('active', counts[l] > 0);
+    }
+  },
+
+  _showResults() {
+    const results = CramEngine.getResults();
+    const statsEl = document.getElementById('results-stats');
+    const titleEl = document.getElementById('results-level-title');
+
+    titleEl.textContent = `Level ${results.level} Results`;
+
+    let html = '';
+    if (results.promoted > 0) {
+      html += `
+        <div class="result-arrow promoted">
+          <span class="result-arrow-num">${results.promoted}</span>
+          <span class="result-arrow-text">CARDS PROMOTED TO LEVEL ${results.promotedToLevel}</span>
+          <span class="result-arrow-icon">→</span>
+        </div>
+      `;
+    }
+    if (results.demoted > 0) {
+      html += `
+        <div class="result-arrow demoted">
+          <span class="result-arrow-num">${results.demoted}</span>
+          <span class="result-arrow-text">CARDS MOVED BACK TO LEVEL ${results.demotedToLevel}</span>
+          <span class="result-arrow-icon">←</span>
+        </div>
+      `;
+    }
+    if (results.promoted === 0 && results.demoted === 0) {
+      html = '<p style="color: var(--text-muted); text-align: center;">No cards were reviewed.</p>';
+    }
+
+    statsEl.innerHTML = html;
+
+    // Update continue button text
+    if (CramEngine.isAllMemorized()) {
+      document.getElementById('continue-text').textContent = '🎉 All Memorized! Go Back';
+    } else {
+      const nextLevel = CramEngine._findLowestLevel();
+      document.getElementById('continue-text').textContent = `Continue to Level ${nextLevel}`;
+    }
+
+    Router.navigate('results');
+  },
+
+  continueStudy() {
+    if (CramEngine.isAllMemorized()) {
+      Router.navigate('home', false);
+      Router.viewStack = [];
+      HomeView.render();
+      showToast('Congratulations! All cards memorized! 🎉', 'success');
+      return;
+    }
+
+    CramEngine.nextLevel();
+    Router.navigate('cram', false);
+    this._renderCard();
+    this._updateLevelBar();
+  },
+};
+
+
+// ── Memorize Mode View ──
+const MemorizeView = {
+  cards: [],
+  currentIndex: 0,
+  isFlipped: false,
+
+  async start() {
+    this.cards = await DB.getCardsBySet(SetView.currentSetId);
+    if (this.cards.length === 0) {
+      showToast('No cards to study!', 'error');
+      return;
+    }
+
+    this.currentIndex = 0;
+    this.isFlipped = false;
+
+    await DB.updateSet(SetView.currentSetId, { lastStudied: Date.now() });
+
+    Router.navigate('memorize');
+    this._renderCard();
+  },
+
+  _renderCard() {
+    const card = this.cards[this.currentIndex];
+    if (!card) return;
+
+    this.isFlipped = false;
+    document.getElementById('memorize-card').classList.remove('flipped');
+    document.getElementById('memorize-front').querySelector('span').textContent = card.front;
+    document.getElementById('memorize-back').querySelector('span').textContent = card.back;
+
+    document.getElementById('memorize-counter').innerHTML =
+      `Card <strong>${this.currentIndex + 1}</strong> of <strong>${this.cards.length}</strong>`;
+    document.getElementById('memorize-position').textContent =
+      `${this.currentIndex + 1} / ${this.cards.length}`;
+
+    document.getElementById('btn-prev').disabled = this.currentIndex === 0;
+    document.getElementById('btn-next').disabled = this.currentIndex === this.cards.length - 1;
+  },
+
+  flipCard() {
+    this.isFlipped = !this.isFlipped;
+    document.getElementById('memorize-card').classList.toggle('flipped', this.isFlipped);
+  },
+
+  next() {
+    if (this.currentIndex < this.cards.length - 1) {
+      this.currentIndex++;
+      this._renderCard();
+    }
+  },
+
+  prev() {
+    if (this.currentIndex > 0) {
+      this.currentIndex--;
+      this._renderCard();
+    }
+  },
+
+  shuffle() {
+    for (let i = this.cards.length - 1; i > 0; i--) {
+      const j = Math.floor(Math.random() * (i + 1));
+      [this.cards[i], this.cards[j]] = [this.cards[j], this.cards[i]];
+    }
+    this.currentIndex = 0;
+    this._renderCard();
+    showToast('Cards shuffled!', 'success');
+  },
+};
+
+
+// ═══════════════════════════════════════════
+// CONFIRM DIALOG
+// ═══════════════════════════════════════════
+const ConfirmDialog = {
+  _resolve: null,
+
+  show(title, message) {
+    return new Promise((resolve) => {
+      this._resolve = resolve;
+      document.getElementById('confirm-title').textContent = title;
+      document.getElementById('confirm-message').textContent = message;
+      document.getElementById('modal-confirm').classList.add('open');
+    });
+  },
+
+  _handleOk() {
+    document.getElementById('modal-confirm').classList.remove('open');
+    if (this._resolve) this._resolve(true);
+  },
+
+  _handleCancel() {
+    document.getElementById('modal-confirm').classList.remove('open');
+    if (this._resolve) this._resolve(false);
+  },
+};
+
+
+// ═══════════════════════════════════════════
+// EVENT BINDINGS
+// ═══════════════════════════════════════════
+function bindEvents() {
+  // ── Home ──
+  document.getElementById('create-banner').addEventListener('click', () => CreateView.open());
+  document.getElementById('btn-search').addEventListener('click', () => {
+    const bar = document.getElementById('search-bar');
+    bar.classList.toggle('open');
+    if (bar.classList.contains('open')) {
+      document.getElementById('search-input').focus();
+    }
+  });
+  document.getElementById('search-input').addEventListener('input', (e) => {
+    HomeView.filter(e.target.value);
+  });
+
+  // ── Create/Edit ──
+  document.getElementById('btn-back-create').addEventListener('click', () => Router.back());
+  document.getElementById('set-name-input').addEventListener('input', () => CreateView._updateSaveButton());
+
+  document.getElementById('btn-add-card').addEventListener('click', () => {
+    const front = document.getElementById('card-front-input');
+    const back = document.getElementById('card-back-input');
+    CreateView.addCard(front.value, back.value);
+    front.value = '';
+    back.value = '';
+    front.focus();
+  });
+
+  // Enter key to add card
+  ['card-front-input', 'card-back-input'].forEach(id => {
+    document.getElementById(id).addEventListener('keydown', (e) => {
+      if (e.key === 'Enter') {
+        e.preventDefault();
+        const front = document.getElementById('card-front-input');
+        const back = document.getElementById('card-back-input');
+        if (front.value && back.value) {
+          CreateView.addCard(front.value, back.value);
+          front.value = '';
+          back.value = '';
+          front.focus();
+        } else if (id === 'card-front-input') {
+          document.getElementById('card-back-input').focus();
+        }
+      }
+    });
+  });
+
+  // CSV upload
+  const csvUpload = document.getElementById('csv-upload');
+  const csvInput = document.getElementById('csv-file-input');
+
+  csvInput.addEventListener('change', (e) => {
+    const file = e.target.files[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = (ev) => {
+      CreateView.importCSV(ev.target.result);
+      // Auto-fill set name from filename if empty
+      const nameInput = document.getElementById('set-name-input');
+      if (!nameInput.value.trim()) {
+        nameInput.value = file.name.replace(/\.(csv|tsv|txt)$/i, '');
+        CreateView._updateSaveButton();
+      }
+    };
+    reader.readAsText(file, 'UTF-8');
+    csvInput.value = ''; // Reset for re-upload
+  });
+
+  csvUpload.addEventListener('dragover', (e) => {
+    e.preventDefault();
+    csvUpload.classList.add('dragover');
+  });
+  csvUpload.addEventListener('dragleave', () => csvUpload.classList.remove('dragover'));
+  csvUpload.addEventListener('drop', (e) => {
+    e.preventDefault();
+    csvUpload.classList.remove('dragover');
+    const file = e.dataTransfer.files[0];
+    if (file) {
+      const reader = new FileReader();
+      reader.onload = (ev) => CreateView.importCSV(ev.target.result);
+      reader.readAsText(file, 'UTF-8');
+    }
+  });
+
+  document.getElementById('btn-save-set').addEventListener('click', () => CreateView.save());
+
+  // ── Card Set View ──
+  document.getElementById('btn-back-set').addEventListener('click', () => {
+    Router.navigate('home', false);
+    Router.viewStack = [];
+    HomeView.render();
+  });
+
+  document.getElementById('btn-edit-set').addEventListener('click', () => {
+    CreateView.open(SetView.currentSetId);
+  });
+
+  document.getElementById('btn-delete-set').addEventListener('click', async () => {
+    const ok = await ConfirmDialog.show(
+      'Delete this set?',
+      `"${SetView.currentSet.name}" and all its cards will be permanently deleted.`
+    );
+    if (ok) {
+      await DB.deleteSet(SetView.currentSetId);
+      showToast('Set deleted', 'success');
+      Router.navigate('home', false);
+      Router.viewStack = [];
+      HomeView.render();
+    }
+  });
+
+  document.getElementById('btn-export-csv').addEventListener('click', () => SetView.exportCSV());
+  document.getElementById('btn-reset-progress').addEventListener('click', async () => {
+    const ok = await ConfirmDialog.show(
+      'Reset progress?',
+      'All cards will be moved back to Level 1.'
+    );
+    if (ok) SetView.resetProgress();
+  });
+
+  // Mode selector
+  document.querySelectorAll('.mode-btn').forEach(btn => {
+    btn.addEventListener('click', () => {
+      document.querySelectorAll('.mode-btn').forEach(b => b.classList.remove('active'));
+      btn.classList.add('active');
+
+      const mode = btn.dataset.mode;
+      if (mode === 'cram') CramView.start();
+      else if (mode === 'memorize') MemorizeView.start();
+    });
+  });
+
+  // ── Cram Mode ──
+  document.getElementById('btn-back-cram').addEventListener('click', () => {
+    Router.navigate('set', false);
+    SetView.open(SetView.currentSetId);
+  });
+
+  document.getElementById('cram-card').addEventListener('click', () => CramView.flipCard());
+  document.getElementById('btn-wrong').addEventListener('click', () => CramView.markWrong());
+  document.getElementById('btn-correct').addEventListener('click', () => CramView.markCorrect());
+  document.getElementById('btn-cram-shuffle').addEventListener('click', () => CramView.shuffle());
+  document.getElementById('btn-cram-reverse').addEventListener('click', () => CramView.toggleReverse());
+
+  // Keyboard shortcuts for cram mode
+  document.addEventListener('keydown', (e) => {
+    if (Router.currentView === 'cram') {
+      if (e.key === ' ' || e.key === 'Enter') {
+        e.preventDefault();
+        CramView.flipCard();
+      } else if (e.key === 'ArrowLeft' || e.key === 'x' || e.key === 'X') {
+        if (CramView.isFlipped) CramView.markWrong();
+      } else if (e.key === 'ArrowRight' || e.key === 'c' || e.key === 'C') {
+        if (CramView.isFlipped) CramView.markCorrect();
+      }
+    } else if (Router.currentView === 'memorize') {
+      if (e.key === ' ' || e.key === 'Enter') {
+        e.preventDefault();
+        MemorizeView.flipCard();
+      } else if (e.key === 'ArrowLeft') {
+        MemorizeView.prev();
+      } else if (e.key === 'ArrowRight') {
+        MemorizeView.next();
+      }
+    }
+  });
+
+  // ── Memorize Mode ──
+  document.getElementById('btn-back-memorize').addEventListener('click', () => {
+    Router.navigate('set', false);
+    SetView.open(SetView.currentSetId);
+  });
+  document.getElementById('memorize-card').addEventListener('click', () => MemorizeView.flipCard());
+  document.getElementById('btn-prev').addEventListener('click', () => MemorizeView.prev());
+  document.getElementById('btn-next').addEventListener('click', () => MemorizeView.next());
+  document.getElementById('btn-shuffle').addEventListener('click', () => MemorizeView.shuffle());
+
+  // ── Results ──
+  document.getElementById('btn-back-results').addEventListener('click', () => {
+    Router.navigate('set', false);
+    SetView.open(SetView.currentSetId);
+  });
+  document.getElementById('btn-continue-cram').addEventListener('click', () => CramView.continueStudy());
+
+  // ── Confirm Dialog ──
+  document.getElementById('btn-confirm-ok').addEventListener('click', () => ConfirmDialog._handleOk());
+  document.getElementById('btn-confirm-cancel').addEventListener('click', () => ConfirmDialog._handleCancel());
+  document.getElementById('modal-confirm').addEventListener('click', (e) => {
+    if (e.target === e.currentTarget) ConfirmDialog._handleCancel();
+  });
+
+  // ── Touch swipe for cram mode ──
+  let touchStartX = 0;
+  let touchStartY = 0;
+
+  document.getElementById('cram-card').addEventListener('touchstart', (e) => {
+    touchStartX = e.changedTouches[0].screenX;
+    touchStartY = e.changedTouches[0].screenY;
+  }, { passive: true });
+
+  document.getElementById('cram-card').addEventListener('touchend', (e) => {
+    const dx = e.changedTouches[0].screenX - touchStartX;
+    const dy = e.changedTouches[0].screenY - touchStartY;
+
+    if (Math.abs(dx) > 60 && Math.abs(dx) > Math.abs(dy) && CramView.isFlipped) {
+      if (dx > 0) {
+        CramView.markCorrect();
+      } else {
+        CramView.markWrong();
+      }
+    }
+  }, { passive: true });
+}
+
+
+// ═══════════════════════════════════════════
+// APP INITIALIZATION
+// ═══════════════════════════════════════════
+async function init() {
+  try {
+    await DB.init();
+    bindEvents();
+    await HomeView.render();
+
+    // Register Service Worker (only works over HTTP, not file://)
+    if ('serviceWorker' in navigator && location.protocol.startsWith('http')) {
+      navigator.serviceWorker.register('./sw.js').then(() => {
+        console.log('Service Worker registered');
+      }).catch(err => {
+        console.warn('SW registration failed:', err);
+      });
+    }
+
+    console.log('Cram app initialized');
+  } catch (err) {
+    console.error('Init error:', err);
+    showToast('Failed to initialize app', 'error');
+  }
+}
+
+document.addEventListener('DOMContentLoaded', init);
+
+  </script>
+</body>
+</html>

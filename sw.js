@@ -1,18 +1,43 @@
-const CACHE_NAME = 'cram-v2';
-const ASSETS = [
-  './',
-  './index.html',
-  './style.css',
-  './app.js',
-  './manifest.json',
-  './icons/icon-192.png',
-  './icons/icon-512.png'
+const CACHE_NAME = 'cram-v3';
+
+// Resolve relative paths to absolute URLs relative to this service worker script
+const ASSET_URLS = [
+  new URL('./', self.location).href,
+  new URL('index.html', self.location).href,
+  new URL('style.css', self.location).href,
+  new URL('app.js', self.location).href,
+  new URL('manifest.json', self.location).href,
+  new URL('icons/icon-192.png', self.location).href,
+  new URL('icons/icon-512.png', self.location).href
 ];
 
-// Cache all assets on install
+// Clean/sanitize responses to strip the "redirected" flag (fixes iOS Safari bug)
+function cleanResponse(response) {
+  if (!response || !response.redirected) {
+    return response;
+  }
+  return new Response(response.body, {
+    status: response.status,
+    statusText: response.statusText,
+    headers: response.headers
+  });
+}
+
+// Fetch and cache all assets on install, cleaning redirects
 self.addEventListener('install', (event) => {
   event.waitUntil(
-    caches.open(CACHE_NAME).then((cache) => cache.addAll(ASSETS))
+    caches.open(CACHE_NAME).then((cache) => {
+      return Promise.all(
+        ASSET_URLS.map((url) => {
+          return fetch(url).then((response) => {
+            if (!response.ok) {
+              throw new Error(`Failed to fetch ${url}`);
+            }
+            return cache.put(url, cleanResponse(response));
+          });
+        })
+      );
+    })
   );
   self.skipWaiting();
 });
@@ -31,12 +56,17 @@ self.addEventListener('activate', (event) => {
 
 // Cache-first with network fallback — works fully offline
 self.addEventListener('fetch', (event) => {
-  // For navigation requests (page loads), always try cache first
+  if (event.request.method !== 'GET') return;
+
+  // For navigation requests (page loads), always try the cached index.html first
   if (event.request.mode === 'navigate') {
+    const indexUrl = new URL('index.html', self.location).href;
     event.respondWith(
-      caches.match('./index.html').then((cached) => {
-        return cached || fetch(event.request).catch(() => {
-          return new Response('<h1>Cram is offline</h1><p>Please open the app while connected first to cache it.</p>', {
+      caches.match(indexUrl).then((cachedResponse) => {
+        return cachedResponse || fetch(event.request).then((response) => {
+          return cleanResponse(response);
+        }).catch(() => {
+          return new Response('<h1>Cram is offline</h1><p>Please connect to the internet first to load the app.</p>', {
             headers: { 'Content-Type': 'text/html' }
           });
         });
@@ -45,18 +75,23 @@ self.addEventListener('fetch', (event) => {
     return;
   }
 
-  // For all other requests: cache first, then network
+  // For other requests: cache first, then network fallback
   event.respondWith(
-    caches.match(event.request).then((cached) => {
-      return cached || fetch(event.request).then((response) => {
-        // Cache new successful responses
+    caches.match(event.request).then((cachedResponse) => {
+      if (cachedResponse) {
+        return cachedResponse;
+      }
+      return fetch(event.request).then((response) => {
+        // Cache new successful GET responses dynamically
         if (response.ok) {
           const clone = response.clone();
-          caches.open(CACHE_NAME).then((cache) => cache.put(event.request, clone));
+          caches.open(CACHE_NAME).then((cache) => {
+            cache.put(event.request, cleanResponse(clone));
+          });
         }
         return response;
       }).catch(() => {
-        // Return nothing for non-critical assets that aren't cached
+        // Return 404 for missing non-critical assets
         return new Response('', { status: 404 });
       });
     })
