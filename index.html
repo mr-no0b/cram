@@ -1,0 +1,331 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>Cram — Flashcard App</title>
+  <meta name="description" content="Offline flashcard app with spaced repetition. Import CSV, study with Cram Mode, and memorize anything.">
+  <meta name="theme-color" content="#1a3a6b">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <link rel="manifest" href="manifest.json">
+  <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Crect width='100' height='100' rx='20' fill='%231a3a6b'/%3E%3Ctext x='50' y='68' font-size='55' font-weight='bold' text-anchor='middle' fill='%237ccf00'%3EC%3C/text%3E%3C/svg%3E">
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <div id="app">
+
+    <!-- ════════════════════════════════════
+         HOME VIEW
+         ════════════════════════════════════ -->
+    <section id="view-home" class="view active">
+      <header class="header">
+        <div class="header-left">
+          <span class="header-title">Cram</span>
+        </div>
+        <div class="header-right">
+          <button class="icon-btn" id="btn-search" aria-label="Search">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+          </button>
+        </div>
+      </header>
+
+      <div class="search-bar" id="search-bar">
+        <input type="text" class="search-input" id="search-input" placeholder="Search flashcard sets...">
+      </div>
+
+      <div class="create-banner" id="create-banner">
+        <h2>Create Flashcards</h2>
+        <button class="create-btn" aria-label="Create new set">+</button>
+      </div>
+
+      <div class="section-header">
+        <h2>My Flashcards</h2>
+        <span class="badge"><span class="badge-num" id="set-count">0</span> sets</span>
+      </div>
+
+      <div class="set-list" id="set-list">
+        <div class="empty-state" id="empty-state">
+          <div class="empty-state-icon">📚</div>
+          <p class="empty-state-text">No flashcard sets yet. Create one or import a CSV to get started!</p>
+        </div>
+      </div>
+    </section>
+
+    <!-- ════════════════════════════════════
+         CREATE / EDIT SET VIEW
+         ════════════════════════════════════ -->
+    <section id="view-create" class="view">
+      <header class="header">
+        <div class="header-left">
+          <button class="icon-btn" id="btn-back-create" aria-label="Go back">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="15 18 9 12 15 6"/></svg>
+          </button>
+          <span class="header-title" id="create-title">New Card Set</span>
+        </div>
+      </header>
+
+      <div class="form-section">
+        <div class="form-group">
+          <label class="form-label" for="set-name-input">Set Name</label>
+          <input type="text" class="form-input" id="set-name-input" placeholder="e.g., Chemistry Elements">
+        </div>
+
+        <div class="form-group">
+          <label class="form-label">Import from CSV</label>
+          <div class="csv-upload" id="csv-upload">
+            <div class="csv-upload-icon">📄</div>
+            <div class="csv-upload-text">Drop CSV file here or tap to browse</div>
+            <div class="csv-upload-hint">Format: front,back (one card per row)</div>
+            <input type="file" accept=".csv,.tsv,.txt" id="csv-file-input">
+          </div>
+        </div>
+
+        <div class="form-group">
+          <label class="form-label">Add Cards Manually</label>
+          <div class="card-entry">
+            <div class="card-entry-inputs">
+              <div class="form-group">
+                <input type="text" class="form-input" id="card-front-input" placeholder="Front">
+              </div>
+              <div class="form-group">
+                <input type="text" class="form-input" id="card-back-input" placeholder="Back">
+              </div>
+            </div>
+            <button class="add-card-btn" id="btn-add-card" aria-label="Add card">+</button>
+          </div>
+        </div>
+
+        <div class="form-group" id="preview-section" style="display:none;">
+          <label class="form-label">Cards (<span id="card-count">0</span>)</label>
+          <div class="card-preview-list" id="card-preview-list"></div>
+        </div>
+
+        <button class="btn-primary" id="btn-save-set" disabled>Save Card Set</button>
+      </div>
+    </section>
+
+    <!-- ════════════════════════════════════
+         CARD SET VIEW
+         ════════════════════════════════════ -->
+    <section id="view-set" class="view">
+      <header class="header">
+        <div class="header-left">
+          <button class="icon-btn" id="btn-back-set" aria-label="Go back">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="15 18 9 12 15 6"/></svg>
+          </button>
+          <span class="header-title" id="set-title">Card Set</span>
+        </div>
+        <div class="header-right">
+          <button class="icon-btn" id="btn-edit-set" aria-label="Edit set">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
+          </button>
+          <button class="icon-btn" id="btn-delete-set" aria-label="Delete set">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>
+          </button>
+        </div>
+      </header>
+
+      <div class="mode-selector" id="mode-selector">
+        <button class="mode-btn active" data-mode="cards">Card Set</button>
+        <button class="mode-btn" data-mode="memorize">Memorize</button>
+        <button class="mode-btn" data-mode="cram">Cram Mode</button>
+      </div>
+
+      <div class="set-info">
+        <div class="set-info-stats">
+          <div class="stat">
+            <span class="stat-value" id="stat-total">0</span>
+            <span class="stat-label">Cards</span>
+          </div>
+          <div class="stat">
+            <span class="stat-value" id="stat-memorized">0</span>
+            <span class="stat-label">Memorized</span>
+          </div>
+        </div>
+      </div>
+
+      <div class="set-actions">
+        <button class="btn-secondary" id="btn-export-csv">📥 Export CSV</button>
+        <button class="btn-secondary" id="btn-reset-progress">🔄 Reset Progress</button>
+      </div>
+
+      <div class="cards-grid" id="cards-grid"></div>
+    </section>
+
+    <!-- ════════════════════════════════════
+         CRAM MODE VIEW
+         ════════════════════════════════════ -->
+    <section id="view-cram" class="view">
+      <header class="header">
+        <div class="header-left">
+          <button class="icon-btn" id="btn-back-cram" aria-label="Go back">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="15 18 9 12 15 6"/></svg>
+          </button>
+          <span class="header-title">Cram Mode</span>
+        </div>
+        <div class="header-right">
+          <button class="icon-btn" id="btn-cram-reverse" aria-label="Reverse cards" title="Reverse (show back first)">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="17 1 21 5 17 9"/><path d="M3 11V9a4 4 0 0 1 4-4h14"/><polyline points="7 23 3 19 7 15"/><path d="M21 13v2a4 4 0 0 1-4 4H3"/></svg>
+          </button>
+          <button class="icon-btn" id="btn-cram-shuffle" aria-label="Shuffle cards" title="Shuffle remaining cards">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="16 3 21 3 21 8"/><line x1="4" y1="20" x2="21" y2="3"/><polyline points="21 16 21 21 16 21"/><line x1="15" y1="15" x2="21" y2="21"/><line x1="4" y1="4" x2="9" y2="9"/></svg>
+          </button>
+        </div>
+      </header>
+
+      <div class="study-area">
+        <div class="card-counter" id="cram-counter">
+          Card <strong>1</strong> of <strong>10</strong>
+        </div>
+
+        <div class="flip-card" id="cram-card">
+          <div class="flip-card-inner">
+            <div class="flip-card-front" id="cram-front">
+              <span>Front</span>
+            </div>
+            <div class="flip-card-back" id="cram-back">
+              <span>Back</span>
+            </div>
+          </div>
+        </div>
+
+        <p class="flip-hint" id="flip-hint">Tap card to reveal answer</p>
+
+        <div class="answer-buttons" id="answer-buttons" style="visibility: hidden;">
+          <button class="answer-btn wrong" id="btn-wrong" aria-label="Wrong">✕</button>
+          <button class="answer-btn correct" id="btn-correct" aria-label="Correct">✓</button>
+        </div>
+
+        <div class="level-bar" id="level-bar">
+          <div class="level-segment" data-level="1">
+            <span class="level-segment-count" id="level-1-count">0</span>
+            <div class="level-segment-bar"></div>
+            <span class="level-segment-label">Lv 1</span>
+          </div>
+          <div class="level-segment" data-level="2">
+            <span class="level-segment-count" id="level-2-count">0</span>
+            <div class="level-segment-bar"></div>
+            <span class="level-segment-label">Lv 2</span>
+          </div>
+          <div class="level-segment" data-level="3">
+            <span class="level-segment-count" id="level-3-count">0</span>
+            <div class="level-segment-bar"></div>
+            <span class="level-segment-label">Lv 3</span>
+          </div>
+          <div class="level-segment" data-level="4">
+            <span class="level-segment-count" id="level-4-count">0</span>
+            <div class="level-segment-bar"></div>
+            <span class="level-segment-label">Lv 4</span>
+          </div>
+          <div class="level-segment" data-level="5">
+            <span class="level-segment-count" id="level-5-count">0</span>
+            <div class="level-segment-bar"></div>
+            <span class="level-segment-label">Done</span>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ════════════════════════════════════
+         MEMORIZE MODE VIEW
+         ════════════════════════════════════ -->
+    <section id="view-memorize" class="view">
+      <header class="header">
+        <div class="header-left">
+          <button class="icon-btn" id="btn-back-memorize" aria-label="Go back">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="15 18 9 12 15 6"/></svg>
+          </button>
+          <span class="header-title">Memorize</span>
+        </div>
+        <div class="header-right">
+          <button class="icon-btn" id="btn-shuffle" aria-label="Shuffle cards">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="16 3 21 3 21 8"/><line x1="4" y1="20" x2="21" y2="3"/><polyline points="21 16 21 21 16 21"/><line x1="15" y1="15" x2="21" y2="21"/><line x1="4" y1="4" x2="9" y2="9"/></svg>
+          </button>
+        </div>
+      </header>
+
+      <div class="study-area">
+        <div class="card-counter" id="memorize-counter">
+          Card <strong>1</strong> of <strong>10</strong>
+        </div>
+
+        <div class="flip-card" id="memorize-card">
+          <div class="flip-card-inner">
+            <div class="flip-card-front" id="memorize-front">
+              <span>Front</span>
+            </div>
+            <div class="flip-card-back" id="memorize-back">
+              <span>Back</span>
+            </div>
+          </div>
+        </div>
+
+        <p class="flip-hint">Tap card to flip</p>
+
+        <div class="memorize-controls">
+          <button class="nav-btn" id="btn-prev" aria-label="Previous card">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="15 18 9 12 15 6"/></svg>
+          </button>
+          <span class="card-counter" id="memorize-position" style="min-width: 80px; text-align: center;"></span>
+          <button class="nav-btn" id="btn-next" aria-label="Next card">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="9 18 15 12 9 6"/></svg>
+          </button>
+        </div>
+      </div>
+    </section>
+
+    <!-- ════════════════════════════════════
+         LEVEL RESULTS VIEW
+         ════════════════════════════════════ -->
+    <section id="view-results" class="view">
+      <header class="header">
+        <div class="header-left">
+          <button class="icon-btn" id="btn-back-results" aria-label="Go back">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="15 18 9 12 15 6"/></svg>
+          </button>
+          <span class="header-title">Cram Mode</span>
+        </div>
+      </header>
+
+      <div class="results-content">
+        <h1 class="results-title" id="results-level-title">Level 1 Results</h1>
+
+        <div class="results-stats" id="results-stats">
+          <!-- Populated by JS -->
+        </div>
+
+        <div class="results-continue">
+          <button class="continue-btn" id="btn-continue-cram">
+            <span id="continue-text">Continue</span>
+            <span>›</span>
+          </button>
+        </div>
+      </div>
+    </section>
+
+    <!-- ════════════════════════════════════
+         DELETE CONFIRM MODAL
+         ════════════════════════════════════ -->
+    <div class="modal-overlay" id="modal-confirm">
+      <div class="modal-content">
+        <div class="modal-handle"></div>
+        <h3 class="modal-title" id="confirm-title">Delete this set?</h3>
+        <p id="confirm-message" style="color: var(--text-muted); margin-bottom: 4px;">This action cannot be undone.</p>
+        <div class="confirm-actions">
+          <button class="btn-secondary" id="btn-confirm-cancel">Cancel</button>
+          <button class="btn-danger" id="btn-confirm-ok">Delete</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- ════════════════════════════════════
+         TOAST CONTAINER
+         ════════════════════════════════════ -->
+    <div class="toast-container" id="toast-container"></div>
+
+  </div>
+
+  <script src="app.js"></script>
+</body>
+</html>
