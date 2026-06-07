@@ -286,32 +286,74 @@ const CSV = {
 // TEXT-TO-SPEECH (TTS) HELPER
 // ═══════════════════════════════════════════
 const TTS = {
+  _voices: [],
+  _ready: false,
+
+  init() {
+    if (!('speechSynthesis' in window)) return;
+
+    // Voices load asynchronously in Chrome — cache them when ready
+    const loadVoices = () => {
+      this._voices = window.speechSynthesis.getVoices();
+      this._ready = this._voices.length > 0;
+      if (this._ready) {
+        console.log(`TTS: ${this._voices.length} voices available`);
+      }
+    };
+
+    loadVoices();
+    window.speechSynthesis.addEventListener('voiceschanged', loadVoices);
+  },
+
+  _findVoice(lang) {
+    if (!lang || this._voices.length === 0) return null;
+    const langBase = lang.split('-')[0]; // e.g. 'de' from 'de-DE'
+
+    // 1. Exact match (e.g. 'de-DE' === 'de-DE')
+    let v = this._voices.find(v => v.lang === lang);
+    if (v) return v;
+
+    // 2. Match with underscore variant (e.g. 'de_DE')
+    v = this._voices.find(v => v.lang === lang.replace('-', '_'));
+    if (v) return v;
+
+    // 3. Match by base language (e.g. any 'de-*')
+    v = this._voices.find(v => v.lang.startsWith(langBase));
+    if (v) return v;
+
+    return null;
+  },
+
   speak(text, lang) {
-    if (!lang) return; // Do not speak if language is not set
+    if (!lang) return;
     if (!('speechSynthesis' in window)) {
-      console.warn('Text-to-speech not supported in this browser.');
+      console.warn('TTS: speechSynthesis not supported');
       return;
     }
-
-    // Cancel any ongoing speech to prevent overlap
-    window.speechSynthesis.cancel();
 
     const cleanText = text.trim();
     if (!cleanText) return;
 
-    const utterance = new SpeechSynthesisUtterance(cleanText);
-    utterance.lang = lang;
+    // Chrome bug workaround: cancel() then speak() too fast silently fails.
+    // We cancel first, then speak after a tiny delay.
+    window.speechSynthesis.cancel();
 
-    // Try to find a high-quality system voice matching the selected language
-    if (window.speechSynthesis.getVoices) {
-      const voices = window.speechSynthesis.getVoices();
-      const voice = voices.find(v => v.lang === lang || v.lang.startsWith(lang));
+    setTimeout(() => {
+      const utterance = new SpeechSynthesisUtterance(cleanText);
+      utterance.lang = lang;
+      utterance.rate = 0.9;
+
+      const voice = this._findVoice(lang);
       if (voice) {
         utterance.voice = voice;
       }
-    }
 
-    window.speechSynthesis.speak(utterance);
+      utterance.onerror = (e) => {
+        console.warn('TTS error:', e.error);
+      };
+
+      window.speechSynthesis.speak(utterance);
+    }, 50);
   }
 };
 
@@ -1446,6 +1488,7 @@ async function init() {
   try {
     await DB.init();
     bindEvents();
+    TTS.init();
     await HomeView.render();
 
     // Register Service Worker (only works over HTTP, not file://)
