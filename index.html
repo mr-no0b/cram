@@ -71,6 +71,31 @@
           <input type="text" class="form-input" id="set-name-input" placeholder="e.g., Chemistry Elements">
         </div>
 
+        <div class="form-group row" style="display: flex; gap: 12px; flex-direction: row;">
+          <div class="form-group" style="flex: 1;">
+            <label class="form-label" for="set-front-lang">Front Voice</label>
+            <select class="form-input" id="set-front-lang">
+              <option value="">None (No Audio)</option>
+              <option value="de-DE">German (Deutsch)</option>
+              <option value="en-US">English (US)</option>
+              <option value="en-GB">English (UK)</option>
+              <option value="es-ES">Spanish (Español)</option>
+              <option value="fr-FR">French (Français)</option>
+            </select>
+          </div>
+          <div class="form-group" style="flex: 1;">
+            <label class="form-label" for="set-back-lang">Back Voice</label>
+            <select class="form-input" id="set-back-lang">
+              <option value="">None (No Audio)</option>
+              <option value="de-DE">German (Deutsch)</option>
+              <option value="en-US">English (US)</option>
+              <option value="en-GB">English (UK)</option>
+              <option value="es-ES">Spanish (Español)</option>
+              <option value="fr-FR">French (Français)</option>
+            </select>
+          </div>
+        </div>
+
         <div class="form-group">
           <label class="form-label">Import from CSV</label>
           <div class="csv-upload" id="csv-upload">
@@ -165,6 +190,9 @@
           <span class="header-title">Cram Mode</span>
         </div>
         <div class="header-right">
+          <button class="icon-btn" id="btn-cram-autoplay" aria-label="Toggle autoplay audio" title="Toggle autoplay audio">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"></polygon><path d="M19.07 4.93a10 10 0 0 1 0 14.14M15.54 8.46a5 5 0 0 1 0 7.07"></path></svg>
+          </button>
           <button class="icon-btn" id="btn-cram-reverse" aria-label="Reverse cards" title="Reverse (show back first)">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="17 1 21 5 17 9"/><path d="M3 11V9a4 4 0 0 1 4-4h14"/><polyline points="7 23 3 19 7 15"/><path d="M21 13v2a4 4 0 0 1-4 4H3"/></svg>
           </button>
@@ -183,9 +211,15 @@
           <div class="flip-card-inner">
             <div class="flip-card-front" id="cram-front">
               <span>Front</span>
+              <button class="audio-btn" id="btn-cram-front-audio" aria-label="Play audio" style="display: none;">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"></polygon><path d="M19.07 4.93a10 10 0 0 1 0 14.14M15.54 8.46a5 5 0 0 1 0 7.07"></path></svg>
+              </button>
             </div>
             <div class="flip-card-back" id="cram-back">
               <span>Back</span>
+              <button class="audio-btn" id="btn-cram-back-audio" aria-label="Play audio" style="display: none;">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"></polygon><path d="M19.07 4.93a10 10 0 0 1 0 14.14M15.54 8.46a5 5 0 0 1 0 7.07"></path></svg>
+              </button>
             </div>
           </div>
         </div>
@@ -239,6 +273,9 @@
           <span class="header-title">Memorize</span>
         </div>
         <div class="header-right">
+          <button class="icon-btn" id="btn-memorize-autoplay" aria-label="Toggle autoplay audio" title="Toggle autoplay audio">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"></polygon><path d="M19.07 4.93a10 10 0 0 1 0 14.14M15.54 8.46a5 5 0 0 1 0 7.07"></path></svg>
+          </button>
           <button class="icon-btn" id="btn-shuffle" aria-label="Shuffle cards">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="16 3 21 3 21 8"/><line x1="4" y1="20" x2="21" y2="3"/><polyline points="21 16 21 21 16 21"/><line x1="15" y1="15" x2="21" y2="21"/><line x1="4" y1="4" x2="9" y2="9"/></svg>
           </button>
@@ -254,9 +291,15 @@
           <div class="flip-card-inner">
             <div class="flip-card-front" id="memorize-front">
               <span>Front</span>
+              <button class="audio-btn" id="btn-memorize-front-audio" aria-label="Play audio" style="display: none;">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"></polygon><path d="M19.07 4.93a10 10 0 0 1 0 14.14M15.54 8.46a5 5 0 0 1 0 7.07"></path></svg>
+              </button>
             </div>
             <div class="flip-card-back" id="memorize-back">
               <span>Back</span>
+              <button class="audio-btn" id="btn-memorize-back-audio" aria-label="Play audio" style="display: none;">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"></polygon><path d="M19.07 4.93a10 10 0 0 1 0 14.14M15.54 8.46a5 5 0 0 1 0 7.07"></path></svg>
+              </button>
             </div>
           </div>
         </div>

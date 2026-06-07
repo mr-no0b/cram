@@ -1460,3 +1460,36 @@ h3 {
   transform: rotate(-90deg);
   transform-origin: 50% 50%;
 }
+
+/* ── Audio Play Button inside cards ── */
+.audio-btn {
+  position: absolute;
+  top: 16px;
+  right: 16px;
+  width: 40px;
+  height: 40px;
+  border: none;
+  background: rgba(0, 0, 0, 0.06);
+  border-radius: 50%;
+  color: var(--text-dark);
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: var(--transition-fast);
+  z-index: 10;
+}
+
+.audio-btn:hover {
+  background: rgba(0, 0, 0, 0.12);
+  transform: scale(1.08);
+}
+
+.audio-btn:active {
+  transform: scale(0.95);
+}
+
+.audio-btn svg {
+  width: 20px;
+  height: 20px;
+}

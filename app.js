@@ -79,8 +79,8 @@ const DB = {
     return this._request(this._tx('sets').get(id));
   },
 
-  async createSet(name) {
-    const set = { name, createdAt: Date.now(), lastStudied: null };
+  async createSet(name, frontLang = '', backLang = '') {
+    const set = { name, frontLang, backLang, createdAt: Date.now(), lastStudied: null };
     if (this._ls) {
       set.id = this._data.nsi++;
       this._data.sets.push(set);
@@ -279,6 +279,40 @@ const CSV = {
     }
     return csv;
   },
+};
+
+
+// ═══════════════════════════════════════════
+// TEXT-TO-SPEECH (TTS) HELPER
+// ═══════════════════════════════════════════
+const TTS = {
+  speak(text, lang) {
+    if (!lang) return; // Do not speak if language is not set
+    if (!('speechSynthesis' in window)) {
+      console.warn('Text-to-speech not supported in this browser.');
+      return;
+    }
+
+    // Cancel any ongoing speech to prevent overlap
+    window.speechSynthesis.cancel();
+
+    const cleanText = text.trim();
+    if (!cleanText) return;
+
+    const utterance = new SpeechSynthesisUtterance(cleanText);
+    utterance.lang = lang;
+
+    // Try to find a high-quality system voice matching the selected language
+    if (window.speechSynthesis.getVoices) {
+      const voices = window.speechSynthesis.getVoices();
+      const voice = voices.find(v => v.lang === lang || v.lang.startsWith(lang));
+      if (voice) {
+        utterance.voice = voice;
+      }
+    }
+
+    window.speechSynthesis.speak(utterance);
+  }
 };
 
 
@@ -557,6 +591,8 @@ const CreateView = {
       titleEl.textContent = 'New Card Set';
       saveBtn.textContent = 'Save Card Set';
       nameInput.value = '';
+      document.getElementById('set-front-lang').value = '';
+      document.getElementById('set-back-lang').value = '';
     }
 
     this._renderPreview();
@@ -569,6 +605,8 @@ const CreateView = {
     const cards = await DB.getCardsBySet(setId);
 
     document.getElementById('set-name-input').value = set.name;
+    document.getElementById('set-front-lang').value = set.frontLang || '';
+    document.getElementById('set-back-lang').value = set.backLang || '';
     this.pendingCards = cards.map(c => ({ front: c.front, back: c.back, existingId: c.id }));
     this._renderPreview();
     this._updateSaveButton();
@@ -638,6 +676,9 @@ const CreateView = {
     const name = document.getElementById('set-name-input').value.trim();
     if (!name || this.pendingCards.length === 0) return;
 
+    const frontLang = document.getElementById('set-front-lang').value;
+    const backLang = document.getElementById('set-back-lang').value;
+
     const btn = document.getElementById('btn-save-set');
     btn.disabled = true;
     btn.textContent = 'Saving...';
@@ -645,7 +686,7 @@ const CreateView = {
     try {
       if (this.editingSetId) {
         // Update existing set
-        await DB.updateSet(this.editingSetId, { name });
+        await DB.updateSet(this.editingSetId, { name, frontLang, backLang });
 
         // Delete old cards that aren't in the new list
         const existingCards = await DB.getCardsBySet(this.editingSetId);
@@ -665,7 +706,7 @@ const CreateView = {
         showToast('Card set updated!', 'success');
       } else {
         // Create new set
-        const set = await DB.createSet(name);
+        const set = await DB.createSet(name, frontLang, backLang);
         await DB.addCards(set.id, this.pendingCards);
         showToast(`Created "${name}" with ${this.pendingCards.length} cards!`, 'success');
       }
@@ -771,6 +812,7 @@ const SetView = {
 const CramView = {
   isFlipped: false,
   reversed: false,
+  autoplay: localStorage.getItem('cramAutoplay') === 'true',
 
   async start() {
     const cards = await DB.getCardsBySet(SetView.currentSetId);
@@ -791,6 +833,7 @@ const CramView = {
 
     // Reset reverse state button visual
     document.getElementById('btn-cram-reverse').classList.toggle('active', this.reversed);
+    document.getElementById('btn-cram-autoplay').classList.toggle('active', this.autoplay);
 
     Router.navigate('cram');
     this._renderCard();
@@ -814,11 +857,27 @@ const CramView = {
     document.getElementById('cram-front').querySelector('span').textContent = frontText;
     document.getElementById('cram-back').querySelector('span').textContent = backText;
 
+    // Show/hide audio play buttons depending on set language configuration
+    const frontActiveLang = this.reversed ? SetView.currentSet.backLang : SetView.currentSet.frontLang;
+    const backActiveLang = this.reversed ? SetView.currentSet.frontLang : SetView.currentSet.backLang;
+
+    document.getElementById('btn-cram-front-audio').style.display = frontActiveLang ? 'flex' : 'none';
+    document.getElementById('btn-cram-back-audio').style.display = backActiveLang ? 'flex' : 'none';
+
     const counter = document.getElementById('cram-counter');
     counter.innerHTML = `Card <strong>${CramEngine.currentIndex + 1}</strong> of <strong>${CramEngine.currentLevelCards.length}</strong> · Level ${CramEngine.currentLevel}`;
 
     document.getElementById('answer-buttons').style.visibility = 'hidden';
     document.getElementById('flip-hint').style.display = '';
+
+    // Auto-play front audio if enabled
+    if (this.autoplay && frontActiveLang) {
+      setTimeout(() => {
+        if (CramEngine.getCurrentCard() === card && !this.isFlipped) {
+          TTS.speak(frontText, frontActiveLang);
+        }
+      }, 350);
+    }
   },
 
   flipCard() {
@@ -829,10 +888,27 @@ const CramView = {
     if (this.isFlipped) {
       document.getElementById('answer-buttons').style.visibility = 'visible';
       document.getElementById('flip-hint').style.display = 'none';
+
+      // Auto-play back audio if enabled
+      const card = CramEngine.getCurrentCard();
+      const backActiveLang = this.reversed ? SetView.currentSet.frontLang : SetView.currentSet.backLang;
+      const backText = this.reversed ? card.front : card.back;
+      if (this.autoplay && backActiveLang) {
+        TTS.speak(backText, backActiveLang);
+      }
     } else {
       document.getElementById('answer-buttons').style.visibility = 'hidden';
       document.getElementById('flip-hint').style.display = '';
     }
+  },
+
+  toggleAutoplay() {
+    this.autoplay = !this.autoplay;
+    localStorage.setItem('cramAutoplay', this.autoplay);
+    document.getElementById('btn-cram-autoplay').classList.toggle('active', this.autoplay);
+    const memoAutoplayBtn = document.getElementById('btn-memorize-autoplay');
+    if (memoAutoplayBtn) memoAutoplayBtn.classList.toggle('active', this.autoplay);
+    MemorizeView.autoplay = this.autoplay;
   },
 
   async markCorrect() {
@@ -981,6 +1057,7 @@ const MemorizeView = {
   cards: [],
   currentIndex: 0,
   isFlipped: false,
+  autoplay: localStorage.getItem('cramAutoplay') === 'true',
 
   async start() {
     this.cards = await DB.getCardsBySet(SetView.currentSetId);
@@ -993,6 +1070,9 @@ const MemorizeView = {
     this.isFlipped = false;
 
     await DB.updateSet(SetView.currentSetId, { lastStudied: Date.now() });
+
+    // Set autoplay toggle state
+    document.getElementById('btn-memorize-autoplay').classList.toggle('active', this.autoplay);
 
     Router.navigate('memorize');
     this._renderCard();
@@ -1007,6 +1087,13 @@ const MemorizeView = {
     document.getElementById('memorize-front').querySelector('span').textContent = card.front;
     document.getElementById('memorize-back').querySelector('span').textContent = card.back;
 
+    // Show/hide audio play buttons depending on set language configuration
+    const frontLang = SetView.currentSet.frontLang;
+    const backLang = SetView.currentSet.backLang;
+
+    document.getElementById('btn-memorize-front-audio').style.display = frontLang ? 'flex' : 'none';
+    document.getElementById('btn-memorize-back-audio').style.display = backLang ? 'flex' : 'none';
+
     document.getElementById('memorize-counter').innerHTML =
       `Card <strong>${this.currentIndex + 1}</strong> of <strong>${this.cards.length}</strong>`;
     document.getElementById('memorize-position').textContent =
@@ -1014,11 +1101,38 @@ const MemorizeView = {
 
     document.getElementById('btn-prev').disabled = this.currentIndex === 0;
     document.getElementById('btn-next').disabled = this.currentIndex === this.cards.length - 1;
+
+    // Auto-play front audio if enabled
+    if (this.autoplay && frontLang) {
+      setTimeout(() => {
+        if (this.cards[this.currentIndex] === card && !this.isFlipped) {
+          TTS.speak(card.front, frontLang);
+        }
+      }, 350);
+    }
   },
 
   flipCard() {
     this.isFlipped = !this.isFlipped;
     document.getElementById('memorize-card').classList.toggle('flipped', this.isFlipped);
+
+    if (this.isFlipped) {
+      // Auto-play back audio if enabled
+      const card = this.cards[this.currentIndex];
+      const backLang = SetView.currentSet.backLang;
+      if (this.autoplay && backLang && card) {
+        TTS.speak(card.back, backLang);
+      }
+    }
+  },
+
+  toggleAutoplay() {
+    this.autoplay = !this.autoplay;
+    localStorage.setItem('cramAutoplay', this.autoplay);
+    document.getElementById('btn-memorize-autoplay').classList.toggle('active', this.autoplay);
+    const cramAutoplayBtn = document.getElementById('btn-cram-autoplay');
+    if (cramAutoplayBtn) cramAutoplayBtn.classList.toggle('active', this.autoplay);
+    CramView.autoplay = this.autoplay;
   },
 
   next() {
@@ -1219,6 +1333,25 @@ function bindEvents() {
   document.getElementById('btn-correct').addEventListener('click', () => CramView.markCorrect());
   document.getElementById('btn-cram-shuffle').addEventListener('click', () => CramView.shuffle());
   document.getElementById('btn-cram-reverse').addEventListener('click', () => CramView.toggleReverse());
+  document.getElementById('btn-cram-autoplay').addEventListener('click', () => CramView.toggleAutoplay());
+
+  document.getElementById('btn-cram-front-audio').addEventListener('click', (e) => {
+    e.stopPropagation();
+    const card = CramEngine.getCurrentCard();
+    if (!card) return;
+    const text = CramView.reversed ? card.back : card.front;
+    const lang = CramView.reversed ? SetView.currentSet.backLang : SetView.currentSet.frontLang;
+    TTS.speak(text, lang);
+  });
+
+  document.getElementById('btn-cram-back-audio').addEventListener('click', (e) => {
+    e.stopPropagation();
+    const card = CramEngine.getCurrentCard();
+    if (!card) return;
+    const text = CramView.reversed ? card.front : card.back;
+    const lang = CramView.reversed ? SetView.currentSet.frontLang : SetView.currentSet.backLang;
+    TTS.speak(text, lang);
+  });
 
   // Keyboard shortcuts for cram mode
   document.addEventListener('keydown', (e) => {
@@ -1252,6 +1385,21 @@ function bindEvents() {
   document.getElementById('btn-prev').addEventListener('click', () => MemorizeView.prev());
   document.getElementById('btn-next').addEventListener('click', () => MemorizeView.next());
   document.getElementById('btn-shuffle').addEventListener('click', () => MemorizeView.shuffle());
+  document.getElementById('btn-memorize-autoplay').addEventListener('click', () => MemorizeView.toggleAutoplay());
+
+  document.getElementById('btn-memorize-front-audio').addEventListener('click', (e) => {
+    e.stopPropagation();
+    const card = MemorizeView.cards[MemorizeView.currentIndex];
+    if (!card) return;
+    TTS.speak(card.front, SetView.currentSet.frontLang);
+  });
+
+  document.getElementById('btn-memorize-back-audio').addEventListener('click', (e) => {
+    e.stopPropagation();
+    const card = MemorizeView.cards[MemorizeView.currentIndex];
+    if (!card) return;
+    TTS.speak(card.back, SetView.currentSet.backLang);
+  });
 
   // ── Results ──
   document.getElementById('btn-back-results').addEventListener('click', () => {
